@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="An interactive simulated phone game engine to write, play, and share branching chat stories.">
+  <title>CYOA Phone Chat Story Engine</title>
+  <link rel="stylesheet" href="style.css?v=1.4">
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="brand-section">
+      <h1>Chat CYOA <span>Engine v1.0</span></h1>
+    </div>
+    <div class="app-controls">
+      <label for="story-select" style="font-size: 0.8rem; color: var(--text-muted);">Active Story:</label>
+      <select id="story-select" style="max-width: 220px; padding: 6px 12px; font-size: 0.85rem;">
+        <!-- Dynamically Populated -->
+      </select>
+
+      <button id="btn-restart-game" class="btn btn-primary btn-sm">
+        <span class="icon">🔄</span> Playtest Draft
+      </button>
+    </div>
+  </header>
+
+  <!-- View Mode Navigation -->
+  <nav class="view-mode-nav">
+    <div class="mode-tab active" data-mode="edit">⚙️ Story Editor</div>
+    <div class="mode-tab" data-mode="play">🕹️ Playtest Mode</div>
+  </nav>
+
+  <!-- Workspace Grid containing Editor & Phone -->
+  <main class="workspace">
+
+    <!-- LEFT PANEL: Visual Story Editor -->
+    <section id="left-panel" class="panel editor-panel mobile-hidden">
+      
+      <!-- Nodes list sidebar -->
+      <div class="editor-sidebar">
+        <div class="sidebar-title">
+          <h2>Story Nodes</h2>
+          <button id="btn-new-node" class="btn btn-accent btn-xs" title="Create a new dialogue node">+ New</button>
+        </div>
+        <div id="node-list" class="node-list-scroller">
+          <!-- Populated dynamically with node keys -->
+        </div>
+        <div class="sidebar-title" style="border-top: 1px solid var(--border-translucent); border-bottom: none; padding: 12px 16px;">
+          <button id="btn-new-story" class="btn btn-primary btn-xs" style="width: 100%;">✨ New Story</button>
+        </div>
+        <div class="sidebar-title" style="border-top: 1px solid var(--border-translucent); border-bottom: none; gap: 6px; padding: 0 16px 12px 16px;">
+          <button id="btn-import-story" class="btn btn-secondary btn-xs" style="flex: 1;" title="Import Story JSON">📥 Import</button>
+          <button id="btn-export-story" class="btn btn-secondary btn-xs" style="flex: 1;" title="Export Story JSON">📤 Export</button>
+          <button id="btn-export-build" class="btn btn-accent btn-xs" style="flex: 1;" title="Export Standalone Web Game">🚀 Build</button>
+          <input type="file" id="import-file-input" class="hidden" accept=".json">
+        </div>
+      </div>
+
+      <!-- Main editor config form and settings panel -->
+      <div class="editor-workspace-scroller">
+        
+        <!-- Character Profiles Config panel -->
+        <div class="config-group">
+          <h3>👥 Characters Settings</h3>
+          <div id="characters-config-list">
+            <!-- Dynamic character profile cards -->
+          </div>
+          <div style="display: flex; gap: 8px; margin-top: 10px;">
+            <button id="btn-add-char" class="btn btn-secondary btn-sm" style="flex: 1;">+ Add Character</button>
+            <button id="btn-save-chars" class="btn btn-accent btn-sm" style="flex: 1;">Save Characters</button>
+          </div>
+        </div>
+
+        <!-- Start Variables Config panel -->
+        <div class="config-group">
+          <h3>📊 Start Variables</h3>
+          <div id="variables-config-list">
+            <!-- Dynamic variables configuration options -->
+          </div>
+          <div style="display: flex; gap: 8px; margin-top: 10px;">
+            <button id="btn-add-var" class="btn btn-secondary btn-sm" style="flex: 1;">+ Add Variable</button>
+            <button id="btn-save-vars" class="btn btn-accent btn-sm" style="flex: 1;">Save Variables</button>
+          </div>
+        </div>
+
+        <!-- Node editing details form -->
+        <div class="config-group" style="background: rgba(255, 255, 255, 0.03); border-color: rgba(168, 85, 247, 0.2);">
+          <h3>📝 Edit Selected Node</h3>
+          <form id="node-form-container" onsubmit="return false;">
+            <!-- Rendered dynamically by editor.js -->
+          </form>
+        </div>
+
+        <!-- Variables state tracking board (Visible for testing values in play) -->
+        <div class="vars-debugger-panel">
+          <div class="vars-debugger-header">
+            <span>Live Game Variables</span>
+            <span style="color: var(--color-success); font-size: 0.75rem;">Active</span>
+          </div>
+          <div id="variables-tracker" class="variables-container">
+            <!-- Dynamic chips -->
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: Phone Simulator -->
+    <section id="right-panel" class="panel phone-panel">
+      <div class="phone-device">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          
+          <!-- Top simulated status clock & status battery/network bar -->
+          <header class="phone-status-bar">
+            <span id="status-time">10:42 AM</span>
+            <div class="status-bar-icons">
+              <!-- Network Signal Icon (SVG) -->
+              <svg class="status-icon" width="14" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M2 11.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm2-3a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5z"/>
+              </svg>
+              <!-- Wifi Icon (SVG) -->
+              <svg class="status-icon" width="14" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M15.384 6.115a.485.485 0 0 0-.047-.736A12.444 12.444 0 0 0 8 3 12.44 12.44 0 0 0 .663 5.379a.485.485 0 0 0-.048.736.518.518 0 0 0 .668.05A11.448 11.448 0 0 1 8 4c2.507 0 4.827.802 6.716 2.164.205.148.49.13.668-.049z"/>
+                <path d="M13.229 8.271a.482.482 0 0 0-.063-.745A9.455 9.455 0 0 0 8 6c-1.905 0-3.68.56-5.166 1.526a.48.48 0 0 0-.063.745.525.525 0 0 0 .652.065A8.46 8.46 0 0 1 8 7a8.46 8.46 0 0 1 4.577 1.336.525.525 0 0 0 .652-.065zm-2.183 2.183c.226-.226.185-.605-.1-.75A6.473 6.473 0 0 0 8 9c-1.187 0-2.302.318-3.272.875-.29.15-.33.529-.1.75l.178.178c.187.187.498.156.63-.075A5.467 5.467 0 0 1 8 10c1.026 0 1.986.282 2.808.775.132.23.443.262.63.075l.178-.178z"/>
+              </svg>
+              <!-- Battery Icon (SVG) -->
+              <svg class="status-icon" width="16" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M2 6h10v4H2V6z"/>
+                <path d="M2 4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H2zm10 1a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h10zm4 3a1.5 1.5 0 0 1-1.5 1.5v-3A1.5 1.5 0 0 1 16 8z"/>
+              </svg>
+            </div>
+          </header>
+
+          <!-- Top active chat target header (Avatar + name + status) -->
+          <div id="phone-chat-header" class="phone-header">
+            <button id="btn-back-to-chats" class="phone-back-btn">
+              <span class="back-arrow">◀</span>
+              <span id="unread-total-badge" class="unread-badge hidden">0</span>
+            </button>
+            <div id="phone-contact-avatar" class="header-avatar">LC</div>
+            <div class="header-info">
+              <span id="phone-contact-name" class="contact-name">Lt. Carver</span>
+              <span id="phone-contact-status" class="contact-status">Online</span>
+            </div>
+          </div>
+
+          <!-- Chat List View Panel (Conversations selector) -->
+          <div id="phone-chat-list-view" class="phone-chat-list-body hidden">
+            <div class="chat-list-header">
+              <h2>Messages</h2>
+            </div>
+            <div id="chats-list" class="chats-list-container">
+              <!-- Dynamically populated chat threads cells -->
+            </div>
+          </div>
+
+          <!-- Chat Room View Panel (Individual message feed) -->
+          <div id="phone-chat-room-view" class="phone-chat-room-body">
+            <!-- Message bubbles scroll log window -->
+            <div id="chat-messages" class="phone-chat-body">
+              <!-- Messages added programmatically -->
+
+              <!-- Typing dots indicator wrapper -->
+              <div id="typing-indicator" class="message-row message-contact hidden" style="margin-bottom: 8px;">
+                <div class="typing-avatar" style="background-color: var(--color-primary);">LC</div>
+                <div class="typing-bubble">
+                  <div class="typing-dot"></div>
+                  <div class="typing-dot"></div>
+                  <div class="typing-dot"></div>
+                </div>
+              </div>
+
+              <!-- Inline choice options buttons wrapper -->
+              <div id="chat-choices" class="choices-panel inline-choices">
+                <!-- Rendered choice options buttons -->
+              </div>
+            </div>
+          </div>
+
+
+
+          <!-- Bottom physical home gesture swipe line -->
+          <div class="phone-home-indicator">
+            <div class="home-bar"></div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Load Modules -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
