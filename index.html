@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="An interactive simulated phone game engine to write, play, and share branching chat stories.">
   <title>CYOA Phone Chat Story Engine</title>
-  <link rel="stylesheet" href="style.css?v=1.4">
+  <link rel="stylesheet" href="style.css?v=1.5">
 </head>
 <body>
 
@@ -26,11 +26,6 @@
     </div>
   </header>
 
-  <!-- View Mode Navigation -->
-  <nav class="view-mode-nav">
-    <div class="mode-tab active" data-mode="edit">⚙️ Story Editor</div>
-    <div class="mode-tab" data-mode="play">🕹️ Playtest Mode</div>
-  </nav>
 
   <!-- Workspace Grid containing Editor & Phone -->
   <main class="workspace">
@@ -68,8 +63,7 @@
             <!-- Dynamic character profile cards -->
           </div>
           <div style="display: flex; gap: 8px; margin-top: 10px;">
-            <button id="btn-add-char" class="btn btn-secondary btn-sm" style="flex: 1;">+ Add Character</button>
-            <button id="btn-save-chars" class="btn btn-accent btn-sm" style="flex: 1;">Save Characters</button>
+            <button id="btn-add-char" class="btn btn-secondary btn-sm" style="width: 100%;">+ Add Character</button>
           </div>
         </div>
 
@@ -80,8 +74,7 @@
             <!-- Dynamic variables configuration options -->
           </div>
           <div style="display: flex; gap: 8px; margin-top: 10px;">
-            <button id="btn-add-var" class="btn btn-secondary btn-sm" style="flex: 1;">+ Add Variable</button>
-            <button id="btn-save-vars" class="btn btn-accent btn-sm" style="flex: 1;">Save Variables</button>
+            <button id="btn-add-var" class="btn btn-secondary btn-sm" style="width: 100%;">+ Add Variable</button>
           </div>
         </div>
 
@@ -194,6 +187,6 @@
   </main>
 
   <!-- Load Modules -->
-  <script type="module" src="app.js"></script>
+  <script type="module" src="app.js?v=1.5"></script>
 </body>
 </html>

@@ -20,6 +20,8 @@ export class StoryEditor {
     this.renderNodeList = this.renderNodeList.bind(this);
     this.selectNode = this.selectNode.bind(this);
     this.saveNodeFromForm = this.saveNodeFromForm.bind(this);
+    this.saveCharactersFromForm = this.saveCharactersFromForm.bind(this);
+    this.saveVariablesFromForm = this.saveVariablesFromForm.bind(this);
     this.createNewNode = this.createNewNode.bind(this);
     this.deleteCurrentNode = this.deleteCurrentNode.bind(this);
     this.exportJSON = this.exportJSON.bind(this);
@@ -32,6 +34,14 @@ export class StoryEditor {
     this.nodeListContainer = document.getElementById("node-list");
     this.editFormContainer = document.getElementById("node-form-container");
     this.storySelect = document.getElementById("story-select");
+
+    // Automatically save node changes on any input or change event in the form
+    this.editFormContainer.addEventListener("input", () => {
+      this.saveNodeFromForm();
+    });
+    this.editFormContainer.addEventListener("change", () => {
+      this.saveNodeFromForm();
+    });
 
     this.renderNodeList();
     this.renderCharactersList();
@@ -260,9 +270,8 @@ export class StoryEditor {
 
       <hr class="editor-divider">
 
-      <div class="editor-actions">
-        <button type="button" id="btn-save-node" class="btn btn-primary">Apply Changes</button>
-        <button type="button" id="btn-play-node" class="btn btn-accent">Play from Here</button>
+       <div class="editor-actions">
+        <button type="button" id="btn-play-node" class="btn btn-accent" style="flex: 1;">Play from Here</button>
         <button type="button" id="btn-delete-node" class="btn btn-danger">Delete Node</button>
       </div>
     `;
@@ -270,7 +279,6 @@ export class StoryEditor {
     this.editFormContainer.innerHTML = html;
 
     // Attach listeners
-    document.getElementById("btn-save-node").addEventListener("click", this.saveNodeFromForm);
     document.getElementById("btn-play-node").addEventListener("click", () => {
       this.saveNodeFromForm();
       this.engine.loadStory(this.currentStory);
@@ -617,6 +625,21 @@ export class StoryEditor {
     }
   }
 
+  saveVariablesFromForm() {
+    const newVars = {};
+    document.querySelectorAll(".var-config-row").forEach(row => {
+      const k = row.querySelector(".var-key-input").value.trim();
+      const v = parseInt(row.querySelector(".var-val-input").value) || 0;
+      if (k) newVars[k] = v;
+    });
+    this.currentStory.variables = newVars;
+    this.engine.loadStory(this.currentStory);
+    if (this.selectedNodeId) {
+      // Re-render the form to update any variable selection dropdowns dynamically
+      this.selectNode(this.selectedNodeId);
+    }
+  }
+
   renderVariablesList() {
     const list = document.getElementById("variables-config-list");
     if (!list) return;
@@ -632,7 +655,15 @@ export class StoryEditor {
         <button type="button" class="btn btn-danger btn-xs btn-del-var">✖</button>
       `;
 
-      row.querySelector(".btn-del-var").addEventListener("click", () => row.remove());
+      row.querySelectorAll("input").forEach(input => {
+        input.addEventListener("input", () => this.saveVariablesFromForm());
+        input.addEventListener("change", () => this.saveVariablesFromForm());
+      });
+
+      row.querySelector(".btn-del-var").addEventListener("click", () => {
+        row.remove();
+        this.saveVariablesFromForm();
+      });
       list.appendChild(row);
     });
 
@@ -649,27 +680,86 @@ export class StoryEditor {
           <input type="number" class="var-val-input" placeholder="value" value="0">
           <button type="button" class="btn btn-danger btn-xs btn-del-var">✖</button>
         `;
-        row.querySelector(".btn-del-var").addEventListener("click", () => row.remove());
+        row.querySelectorAll("input").forEach(input => {
+          input.addEventListener("input", () => this.saveVariablesFromForm());
+          input.addEventListener("change", () => this.saveVariablesFromForm());
+        });
+        row.querySelector(".btn-del-var").addEventListener("click", () => {
+          row.remove();
+          this.saveVariablesFromForm();
+        });
         list.appendChild(row);
+        this.saveVariablesFromForm();
       });
     }
+  }
 
-    // Save button
-    const btnSaveVars = document.getElementById("btn-save-vars");
-    if (btnSaveVars) {
-      const newBtn = btnSaveVars.cloneNode(true);
-      btnSaveVars.parentNode.replaceChild(newBtn, btnSaveVars);
-      newBtn.addEventListener("click", () => {
-        const newVars = {};
-        document.querySelectorAll(".var-config-row").forEach(row => {
-          const k = row.querySelector(".var-key-input").value.trim();
-          const v = parseInt(row.querySelector(".var-val-input").value) || 0;
-          if (k) newVars[k] = v;
+  saveCharactersFromForm(showAlert = false) {
+    const updatedCharacters = {};
+    const idMap = {};
+
+    document.querySelectorAll(".char-config-row").forEach(row => {
+      const oldId = row.dataset.oldId;
+      const newId = row.querySelector(".char-id-input").value.trim();
+      const name = row.querySelector(".char-name-input").value.trim();
+      const color = row.querySelector(".char-color-input").value;
+      const avatar = row.querySelector(".char-avatar-input").value.trim();
+      const isPlayer = row.querySelector(".char-player-check").checked;
+
+      if (newId) {
+        updatedCharacters[newId] = {
+          name: name,
+          avatarColor: color,
+          avatarText: avatar,
+          isPlayer: isPlayer
+        };
+
+        if (oldId && oldId !== newId) {
+          idMap[oldId] = newId;
+          row.dataset.oldId = newId;
+        }
+      }
+    });
+
+    this.currentStory.characters = updatedCharacters;
+
+    // Cascade ID changes to all nodes in the story
+    if (Object.keys(idMap).length > 0) {
+      const updateNodeRefs = (list) => {
+        if (!list) return;
+        list.forEach(node => {
+          if (idMap[node.sender]) {
+            node.sender = idMap[node.sender];
+          }
+          if (node.choices) {
+            node.choices.forEach(choice => {
+              if (idMap[choice.chat]) {
+                choice.chat = idMap[choice.chat];
+              }
+              if (choice.nodes) {
+                updateNodeRefs(choice.nodes);
+              }
+            });
+          }
+          if (node.trueNodes) {
+            updateNodeRefs(node.trueNodes);
+          }
+          if (node.falseNodes) {
+            updateNodeRefs(node.falseNodes);
+          }
         });
-        this.currentStory.variables = newVars;
-        this.engine.loadStory(this.currentStory);
-        alert("Variables saved!");
-      });
+      };
+      updateNodeRefs(this.currentStory.nodes);
+    }
+
+    this.engine.loadStory(this.currentStory);
+    if (showAlert) {
+      alert("Characters saved!");
+    }
+    this.renderNodeList();
+    if (this.selectedNodeId) {
+      // Re-render the form to update any character select/dropdowns dynamically
+      this.selectNode(this.selectedNodeId);
     }
   }
 
@@ -683,9 +773,10 @@ export class StoryEditor {
       const char = chars[key];
       const row = document.createElement("div");
       row.className = "char-config-row";
+      row.dataset.oldId = key;
       row.innerHTML = `
         <div class="char-keys-inputs">
-          <input type="text" class="char-id-input" placeholder="ID" value="${key}" disabled>
+          <input type="text" class="char-id-input" placeholder="ID" value="${key}">
           <input type="text" class="char-name-input" placeholder="Display Name" value="${char.name}">
         </div>
         <div class="char-visuals-inputs">
@@ -698,10 +789,16 @@ export class StoryEditor {
         </div>
       `;
 
+      // Automatically save character fields whenever they change
+      row.querySelectorAll("input").forEach(input => {
+        input.addEventListener("input", () => this.saveCharactersFromForm(false));
+        input.addEventListener("change", () => this.saveCharactersFromForm(false));
+      });
+
       row.querySelector(".btn-del-char").addEventListener("click", () => {
         if (confirm(`Remove character "${key}"?`)) {
-          delete this.currentStory.characters[key];
           row.remove();
+          this.saveCharactersFromForm(false);
         }
       });
       list.appendChild(row);
@@ -728,6 +825,7 @@ export class StoryEditor {
         };
 
         this.renderCharactersList();
+        this.saveCharactersFromForm(false);
       });
     }
 
@@ -737,24 +835,7 @@ export class StoryEditor {
       const newBtn = btnSaveChars.cloneNode(true);
       btnSaveChars.parentNode.replaceChild(newBtn, btnSaveChars);
       newBtn.addEventListener("click", () => {
-        document.querySelectorAll(".char-config-row").forEach(row => {
-          const id = row.querySelector(".char-id-input").value.trim();
-          const name = row.querySelector(".char-name-input").value.trim();
-          const color = row.querySelector(".char-color-input").value;
-          const avatar = row.querySelector(".char-avatar-input").value.trim();
-          const isPlayer = row.querySelector(".char-player-check").checked;
-
-          if (id && this.currentStory.characters[id]) {
-            this.currentStory.characters[id].name = name;
-            this.currentStory.characters[id].avatarColor = color;
-            this.currentStory.characters[id].avatarText = avatar;
-            this.currentStory.characters[id].isPlayer = isPlayer;
-          }
-        });
-        
-        this.engine.loadStory(this.currentStory);
-        alert("Characters saved!");
-        if (this.selectedNodeId) this.selectNode(this.selectedNodeId);
+        this.saveCharactersFromForm(true);
       });
     }
   }

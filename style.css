@@ -110,7 +110,7 @@ body {
 .workspace {
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(450px, 1.1fr) 0.9fr;
+  grid-template-columns: minmax(750px, 1.4fr) 0.6fr;
   height: calc(100vh - 65px);
   overflow: hidden;
 }
@@ -149,7 +149,7 @@ body {
   backdrop-filter: blur(12px);
   border-right: 1px solid var(--border-translucent);
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 480px 1fr;
   gap: 20px;
   overflow: hidden;
   padding: 0;
@@ -262,9 +262,9 @@ body {
 .node-snippet {
   font-size: 0.75rem;
   color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .editor-workspace-scroller {
@@ -1094,7 +1094,7 @@ body[data-view-mode="play"] #right-panel {
 
   .workspace {
     grid-template-columns: 1fr;
-    height: calc(100vh - 120px);
+    height: calc(100vh - 65px);
   }
 
 
@@ -1168,10 +1168,10 @@ body[data-view-mode="play"] #right-panel {
 }
 
 .choice-sidebar-txt {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 140px;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: none;
 }
 
 .cond-header-label {

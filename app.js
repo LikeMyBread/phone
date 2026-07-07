@@ -109,10 +109,15 @@ class AppCoordinator {
     if (this.btnRestart) {
       this.btnRestart.addEventListener("click", () => {
         audio.playClick();
-        const activeStory = (this.editor && this.editor.currentStory) || this.engine.story;
-        this.engine.loadStory(activeStory);
-        this.engine.reset();
-        this.switchViewMode("play");
+        const currentMode = document.body.dataset.viewMode || "edit";
+        if (currentMode === "edit") {
+          const activeStory = (this.editor && this.editor.currentStory) || this.engine.story;
+          this.engine.loadStory(activeStory);
+          this.engine.reset();
+          this.switchViewMode("play");
+        } else {
+          this.switchViewMode("edit");
+        }
       });
     }
 
@@ -567,29 +572,18 @@ class AppCoordinator {
   }
 
   setupViewModeTabs() {
-    const tabs = document.querySelectorAll(".mode-tab");
-    if (tabs.length === 0) return;
-
-    // Set initial mode based on active tab
-    const activeTab = document.querySelector(".mode-tab.active");
-    const initialMode = activeTab ? activeTab.dataset.mode : "edit";
-    document.body.dataset.viewMode = initialMode;
-
-    tabs.forEach(tab => {
-      tab.addEventListener("click", (e) => {
-        const mode = e.currentTarget.dataset.mode;
-        this.switchViewMode(mode);
-        audio.playClick();
-      });
-    });
+    document.body.dataset.viewMode = "edit";
   }
 
   switchViewMode(mode) {
-    const tabs = document.querySelectorAll(".mode-tab");
-    tabs.forEach(t => {
-      t.classList.toggle("active", t.dataset.mode === mode);
-    });
     document.body.dataset.viewMode = mode;
+    if (this.btnRestart) {
+      if (mode === "play") {
+        this.btnRestart.innerHTML = `<span class="icon">📝</span> Edit Draft`;
+      } else {
+        this.btnRestart.innerHTML = `<span class="icon">🔄</span> Playtest Draft`;
+      }
+    }
   }
 
   async exportBuild() {
