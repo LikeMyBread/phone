@@ -12,7 +12,19 @@ class AppCoordinator {
   constructor() {
     this.engine = new GameEngine();
     this.editor = new StoryEditor(this.engine);
-    this.stories = JSON.parse(JSON.stringify(defaultStories));
+    
+    // Load stories from localStorage, falling back to defaultStories
+    const savedStories = localStorage.getItem('phone_stories');
+    if (savedStories) {
+      try {
+        this.stories = JSON.parse(savedStories);
+      } catch (e) {
+        console.error("Failed to parse saved stories from localStorage", e);
+        this.stories = JSON.parse(JSON.stringify(defaultStories));
+      }
+    } else {
+      this.stories = JSON.parse(JSON.stringify(defaultStories));
+    }
 
     // DOM Elements
     this.messagesContainer = null;
@@ -128,6 +140,7 @@ class AppCoordinator {
         if (this.editor && this.editor.currentStory && this.storySelect.dataset.lastSelected) {
           const lastKey = this.storySelect.dataset.lastSelected;
           this.stories[lastKey] = this.editor.currentStory;
+          this.saveStoriesToLocalStorage(lastKey);
         }
         const storyKey = e.target.value;
         this.storySelect.dataset.lastSelected = storyKey;
@@ -198,6 +211,16 @@ class AppCoordinator {
     this.setupViewModeTabs();
   }
 
+  saveStoriesToLocalStorage(targetKey) {
+    if (this.editor && this.editor.currentStory) {
+      const key = targetKey || (this.storySelect && this.storySelect.value);
+      if (key) {
+        this.stories[key] = this.editor.currentStory;
+      }
+    }
+    localStorage.setItem('phone_stories', JSON.stringify(this.stories));
+  }
+
   populateStorySelector() {
     if (!this.storySelect) return;
     this.storySelect.innerHTML = "";
@@ -216,6 +239,7 @@ class AppCoordinator {
     // Save current story edits first
     if (this.editor && this.editor.currentStory && this.storySelect && this.storySelect.value) {
       this.stories[this.storySelect.value] = this.editor.currentStory;
+      this.saveStoriesToLocalStorage(this.storySelect.value);
     }
 
     const storyId = "custom_story_" + Date.now();
@@ -251,6 +275,9 @@ class AppCoordinator {
     this.engine.loadStory(newStory);
     if (this.editor) this.editor.init(newStory);
     this.openChatRoom(this.engine.activeChatId);
+
+    // Save new story to localStorage
+    this.saveStoriesToLocalStorage(storyId);
   }
 
   // Opens conversations list index view

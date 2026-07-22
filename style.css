@@ -83,6 +83,7 @@ body {
   letter-spacing: -0.5px;
   background: linear-gradient(to right, #00f0ff, #a855f7);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   display: flex;
   align-items: center;
@@ -209,6 +210,66 @@ body {
 
 .node-item.start {
   border-left: 3px solid var(--color-success);
+}
+
+.btn-node-add-child {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(168, 85, 247, 0.12);
+  color: var(--color-primary);
+  border: 1px dashed rgba(168, 85, 247, 0.35);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-node-add-child:hover {
+  background: rgba(168, 85, 247, 0.25);
+  border-color: rgba(168, 85, 247, 0.6);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.node-item.dragging {
+  opacity: 0.4;
+  border: 1px dashed var(--color-primary);
+}
+
+.node-item.drag-over-top {
+  border-top: 2px solid var(--color-accent) !important;
+  background: rgba(6, 182, 212, 0.1) !important;
+}
+
+.node-item.drag-over-bottom {
+  border-bottom: 2px solid var(--color-accent) !important;
+  background: rgba(6, 182, 212, 0.1) !important;
+}
+
+.node-item.drag-over-child {
+  border: 2px dashed var(--color-primary) !important;
+  background: rgba(168, 85, 247, 0.15) !important;
+}
+
+.node-choice-sidebar-item.drag-over-choice {
+  background: rgba(168, 85, 247, 0.25) !important;
+  border: 1px dashed var(--color-primary) !important;
+  border-radius: 4px;
+}
+
+.top-level-add-container.drag-over-toplevel {
+  background: rgba(6, 182, 212, 0.15);
+  border: 2px dashed var(--color-accent);
+  border-radius: var(--border-radius-sm);
+}
+
+.top-level-add-container {
+  padding: 4px 0 12px 0;
+  transition: all 0.2s ease;
 }
 
 .node-label {

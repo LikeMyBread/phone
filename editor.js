@@ -23,9 +23,13 @@ export class StoryEditor {
     this.saveCharactersFromForm = this.saveCharactersFromForm.bind(this);
     this.saveVariablesFromForm = this.saveVariablesFromForm.bind(this);
     this.createNewNode = this.createNewNode.bind(this);
+    this.createChildNode = this.createChildNode.bind(this);
+    this.createTopLevelNode = this.createTopLevelNode.bind(this);
+    this.moveNode = this.moveNode.bind(this);
     this.deleteCurrentNode = this.deleteCurrentNode.bind(this);
     this.exportJSON = this.exportJSON.bind(this);
     this.importJSON = this.importJSON.bind(this);
+    this.triggerLocalStorageSave = this.triggerLocalStorageSave.bind(this);
   }
 
   init(storyData) {
@@ -41,6 +45,7 @@ export class StoryEditor {
     });
     this.editFormContainer.addEventListener("change", () => {
       this.saveNodeFromForm();
+      this.triggerLocalStorageSave();
     });
 
     this.renderNodeList();
@@ -104,6 +109,73 @@ export class StoryEditor {
         nodeDiv.className = `node-item ${pathStr === this.selectedNodeId ? 'active' : ''}`;
         nodeDiv.style.paddingLeft = `${depth * 16 + 10}px`;
         nodeDiv.dataset.path = pathStr;
+        nodeDiv.draggable = true;
+
+        nodeDiv.addEventListener("dragstart", (e) => {
+          e.stopPropagation();
+          this.draggedPathStr = pathStr;
+          nodeDiv.classList.add("dragging");
+          e.dataTransfer.setData("text/plain", pathStr);
+          e.dataTransfer.effectAllowed = "move";
+        });
+
+        nodeDiv.addEventListener("dragend", (e) => {
+          e.stopPropagation();
+          nodeDiv.classList.remove("dragging");
+          document.querySelectorAll(".node-item, .node-choice-sidebar-item, .top-level-add-container").forEach(el => {
+            el.classList.remove("drag-over-top", "drag-over-bottom", "drag-over-child", "drag-over-choice", "drag-over-toplevel");
+          });
+          this.draggedPathStr = null;
+        });
+
+        nodeDiv.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!this.draggedPathStr || this.draggedPathStr === pathStr) return;
+          // Prevent dropping a node into its own descendant
+          if (pathStr.startsWith(this.draggedPathStr + ",")) return;
+
+          e.dataTransfer.dropEffect = "move";
+          const rect = nodeDiv.getBoundingClientRect();
+          const offsetY = e.clientY - rect.top;
+          const height = rect.height;
+
+          nodeDiv.classList.remove("drag-over-top", "drag-over-bottom", "drag-over-child");
+
+          if (offsetY < height * 0.25) {
+            nodeDiv.classList.add("drag-over-top");
+          } else if (offsetY > height * 0.75) {
+            nodeDiv.classList.add("drag-over-bottom");
+          } else {
+            nodeDiv.classList.add("drag-over-child");
+          }
+        });
+
+        nodeDiv.addEventListener("dragleave", (e) => {
+          e.stopPropagation();
+          nodeDiv.classList.remove("drag-over-top", "drag-over-bottom", "drag-over-child");
+        });
+
+        nodeDiv.addEventListener("drop", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const draggedPath = this.draggedPathStr || e.dataTransfer.getData("text/plain");
+          if (!draggedPath || draggedPath === pathStr) return;
+          if (pathStr.startsWith(draggedPath + ",")) return; // Prevent dropping parent into child
+
+          const rect = nodeDiv.getBoundingClientRect();
+          const offsetY = e.clientY - rect.top;
+          const height = rect.height;
+
+          let position = "child";
+          if (offsetY < height * 0.25) {
+            position = "before";
+          } else if (offsetY > height * 0.75) {
+            position = "after";
+          }
+
+          this.moveNode(draggedPath, pathStr, position);
+        });
 
         const label = document.createElement("div");
         label.className = "node-label";
@@ -125,6 +197,20 @@ export class StoryEditor {
         snippet.textContent = node.text || `[Conditional Branch]`;
         nodeDiv.appendChild(snippet);
 
+        // Quick add child button container
+        const btnAddChild = document.createElement("button");
+        btnAddChild.type = "button";
+        btnAddChild.className = "btn-node-add-child";
+        btnAddChild.title = "Add child node";
+        btnAddChild.innerHTML = "+ Add Child";
+        btnAddChild.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.createChildNode(pathStr);
+        });
+
+        // Append quick add button under node content inside nodeDiv
+        nodeDiv.appendChild(btnAddChild);
+
         nodeDiv.addEventListener("click", () => this.selectNode(pathStr));
         this.nodeListContainer.appendChild(nodeDiv);
 
@@ -138,6 +224,32 @@ export class StoryEditor {
               <span class="choice-sidebar-bullet">↳</span> 
               <span class="choice-sidebar-txt">${choice.text}</span>
             `;
+
+            const choicePathStr = `${pathStr},choices,${choiceIdx}`;
+
+            choiceDiv.addEventListener("dragover", (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!this.draggedPathStr || choicePathStr.startsWith(this.draggedPathStr + ",")) return;
+              e.dataTransfer.dropEffect = "move";
+              choiceDiv.classList.add("drag-over-choice");
+            });
+
+            choiceDiv.addEventListener("dragleave", (e) => {
+              e.stopPropagation();
+              choiceDiv.classList.remove("drag-over-choice");
+            });
+
+            choiceDiv.addEventListener("drop", (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              choiceDiv.classList.remove("drag-over-choice");
+              const draggedPath = this.draggedPathStr || e.dataTransfer.getData("text/plain");
+              if (!draggedPath || choicePathStr.startsWith(draggedPath + ",")) return;
+
+              this.moveNode(draggedPath, choicePathStr, "choice");
+            });
+
             this.nodeListContainer.appendChild(choiceDiv);
 
             if (choice.nodes && choice.nodes.length > 0) {
@@ -169,6 +281,51 @@ export class StoryEditor {
     };
 
     traverse(this.currentStory.nodes, 0, []);
+
+    // Button at the end to make a new top-level node after the others
+    const addTopLevelContainer = document.createElement("div");
+    addTopLevelContainer.className = "top-level-add-container";
+    addTopLevelContainer.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (this.draggedPathStr) {
+        e.dataTransfer.dropEffect = "move";
+        addTopLevelContainer.classList.add("drag-over-toplevel");
+      }
+    });
+
+    addTopLevelContainer.addEventListener("dragleave", (e) => {
+      e.stopPropagation();
+      addTopLevelContainer.classList.remove("drag-over-toplevel");
+    });
+
+    addTopLevelContainer.addEventListener("drop", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      addTopLevelContainer.classList.remove("drag-over-toplevel");
+      const draggedPath = this.draggedPathStr || e.dataTransfer.getData("text/plain");
+      if (!draggedPath) return;
+
+      const lastTopIndex = this.currentStory.nodes.length - 1;
+      if (lastTopIndex >= 0) {
+        this.moveNode(draggedPath, String(lastTopIndex), "after");
+      } else {
+        // If story has no nodes, move as child of none / top level
+        this.moveNode(draggedPath, "0", "after");
+      }
+    });
+
+    const btnAddTopLevel = document.createElement("button");
+    btnAddTopLevel.type = "button";
+    btnAddTopLevel.className = "btn btn-secondary btn-sm";
+    btnAddTopLevel.style.width = "100%";
+    btnAddTopLevel.style.marginTop = "8px";
+    btnAddTopLevel.innerHTML = "+ Add Top-Level Node";
+    btnAddTopLevel.addEventListener("click", () => {
+      this.createTopLevelNode();
+    });
+    addTopLevelContainer.appendChild(btnAddTopLevel);
+    this.nodeListContainer.appendChild(addTopLevelContainer);
   }
 
   // Load a single node into form editor
@@ -307,6 +464,8 @@ export class StoryEditor {
       const list = document.getElementById("choices-list-editor");
       const idx = list.children.length;
       list.appendChild(this.createChoiceItemMarkup("", null, idx, pathStr));
+      this.saveNodeFromForm();
+      this.triggerLocalStorageSave();
     });
 
     // Add branches listeners for conditional lists
@@ -345,7 +504,11 @@ export class StoryEditor {
     btnDel.type = "button";
     btnDel.className = "btn btn-danger btn-xs";
     btnDel.textContent = "✖";
-    btnDel.addEventListener("click", () => wrapper.remove());
+    btnDel.addEventListener("click", () => {
+      wrapper.remove();
+      this.saveNodeFromForm();
+      this.triggerLocalStorageSave();
+    });
 
     row1.appendChild(textInput);
     row1.appendChild(btnDel);
@@ -439,9 +602,9 @@ export class StoryEditor {
     const node = this.getNodeByPath(parentPathStr);
     if (!node) return;
 
+    // Ensure the choice object exists in the array
     if (!node.choices[choiceIndex]) {
-      alert("Please save choice option list first before adding dialogue sub-branches.");
-      return;
+      node.choices[choiceIndex] = { text: "" };
     }
 
     const choice = node.choices[choiceIndex];
@@ -459,6 +622,7 @@ export class StoryEditor {
     const targetPath = `${parentPathStr},choices,${choiceIndex},nodes,${newIndex}`;
     this.renderNodeList();
     this.selectNode(targetPath);
+    this.triggerLocalStorageSave();
   }
 
   // Appends a child dialogue node under conditional true/false array in-place
@@ -480,6 +644,7 @@ export class StoryEditor {
     const targetPath = `${parentPathStr},${branchKey},${newIndex}`;
     this.renderNodeList();
     this.selectNode(targetPath);
+    this.triggerLocalStorageSave();
   }
 
   // Save changes from form back to draft story
@@ -517,20 +682,18 @@ export class StoryEditor {
         const actVal = parseInt(item.querySelector(".choice-act-val").value);
         const chatVal = item.querySelector(".choice-chat-select").value;
 
-        if (textVal) {
-          const choiceObj = { text: textVal };
-          if (chatVal) {
-            choiceObj.chat = chatVal;
-          }
-          if (actKey && !isNaN(actVal)) {
-            choiceObj.actions = { [actKey]: actVal };
-          }
-          // Retain sub-nodes list if it exists in the original choice object
-          if (oldNode.choices && oldNode.choices[chIdx] && oldNode.choices[chIdx].nodes) {
-            choiceObj.nodes = oldNode.choices[chIdx].nodes;
-          }
-          choices.push(choiceObj);
+        const choiceObj = { text: textVal || "" };
+        if (chatVal) {
+          choiceObj.chat = chatVal;
         }
+        if (actKey && !isNaN(actVal)) {
+          choiceObj.actions = { [actKey]: actVal };
+        }
+        // Retain sub-nodes list if it exists in the original choice object
+        if (oldNode.choices && oldNode.choices[chIdx] && oldNode.choices[chIdx].nodes) {
+          choiceObj.nodes = oldNode.choices[chIdx].nodes;
+        }
+        choices.push(choiceObj);
       });
 
       parentList[index] = {
@@ -546,61 +709,141 @@ export class StoryEditor {
     this.engine.loadStory(this.currentStory);
   }
 
-  // Create a new blank dialogue node (as a child if a node is selected, else at root level)
-  createNewNode() {
-    this.saveNodeFromForm(); // Save active edits first
+  // Move node from source path to target path (before, after, or as child)
+  moveNode(sourcePathStr, targetPathStr, position = "child") {
+    if (!sourcePathStr || !targetPathStr || sourcePathStr === targetPathStr) return;
+    if (targetPathStr.startsWith(sourcePathStr + ",")) return; // Prevent moving node into its own descendant
+
+    this.saveNodeFromForm();
+
+    // 1. Get the source node object
+    const sourceNode = this.getNodeByPath(sourcePathStr);
+    if (!sourceNode) return;
+
+    // Deep clone source node to preserve its data and child trees cleanly
+    const sourceNodeCopy = JSON.parse(JSON.stringify(sourceNode));
+
+    // 2. Remove source node from its current parent array
+    const { parentList: srcList, index: srcIndex } = this.resolvePath(sourcePathStr);
+    srcList.splice(srcIndex, 1);
+
+    // 3. Insert into target location
+    if (position === "choice") {
+      // targetPathStr looks like "0,choices,1"
+      const { parentList: choiceList, index: choiceIndex } = this.resolvePath(targetPathStr);
+      const choice = choiceList[choiceIndex];
+      if (choice) {
+        if (!choice.nodes) choice.nodes = [];
+        choice.nodes.push(sourceNodeCopy);
+      }
+    } else if (position === "child") {
+      const targetNode = this.getNodeByPath(targetPathStr);
+      if (!targetNode) return;
+
+      if (targetNode.type === "conditional") {
+        if (!targetNode.trueNodes) targetNode.trueNodes = [];
+        targetNode.trueNodes.push(sourceNodeCopy);
+      } else {
+        if (!targetNode.choices) targetNode.choices = [];
+        if (targetNode.choices.length === 0) {
+          targetNode.choices.push({ text: "Continue", nodes: [] });
+        }
+        const choice = targetNode.choices[0];
+        if (!choice.nodes) choice.nodes = [];
+        choice.nodes.push(sourceNodeCopy);
+      }
+    } else {
+      // Re-resolve target path since removing sourceNode might have altered indices in the same array
+      const { parentList: tgtList, index: tgtIndex } = this.resolvePath(targetPathStr);
+      let insertIndex = position === "before" ? tgtIndex : tgtIndex + 1;
+      // Clamp index within target list bounds
+      insertIndex = Math.max(0, Math.min(insertIndex, tgtList.length));
+      tgtList.splice(insertIndex, 0, sourceNodeCopy);
+    }
+
+    this.selectedNodeId = null;
+    this.renderNodeList();
+    this.engine.loadStory(this.currentStory);
+    this.triggerLocalStorageSave();
+  }
+
+  // Create a child node under a specific node path (appending after existing children)
+  createChildNode(parentPathStr) {
+    this.saveNodeFromForm();
+
+    const node = this.getNodeByPath(parentPathStr);
+    if (!node) return;
+
+    const newNode = {
+      sender: "astro",
+      text: "New branch message content.",
+      delay: 500
+    };
 
     let newPath;
+    if (node.type === "conditional") {
+      if (!node.trueNodes) {
+        node.trueNodes = [];
+      }
+      const newIndex = node.trueNodes.length;
+      node.trueNodes.push(newNode);
+      newPath = `${parentPathStr},trueNodes,${newIndex}`;
+    } else {
+      if (!node.choices) {
+        node.choices = [];
+      }
+      if (node.choices.length === 0) {
+        node.choices.push({
+          text: "Continue",
+          nodes: []
+        });
+      }
+      const choice = node.choices[0];
+      if (!choice.nodes) {
+        choice.nodes = [];
+      }
+      const newIndex = choice.nodes.length;
+      choice.nodes.push(newNode);
+      newPath = `${parentPathStr},choices,0,nodes,${newIndex}`;
+    }
+
+    this.renderNodeList();
+    this.selectNode(newPath);
+    this.engine.loadStory(this.currentStory);
+    this.triggerLocalStorageSave();
+  }
+
+  // Create a new top-level node at the end of the root nodes list
+  createTopLevelNode() {
+    this.saveNodeFromForm();
+
     const newNode = {
       sender: "system",
       text: "New dialogue node.",
       delay: 500
     };
 
-    if (this.selectedNodeId) {
-      const node = this.getNodeByPath(this.selectedNodeId);
-      if (node) {
-        if (node.type === "conditional") {
-          if (!node.trueNodes) {
-            node.trueNodes = [];
-          }
-          const newIndex = node.trueNodes.length;
-          newNode.sender = "astro";
-          newNode.text = "New branch message content.";
-          node.trueNodes.push(newNode);
-          newPath = `${this.selectedNodeId},trueNodes,${newIndex}`;
-        } else {
-          if (!node.choices) {
-            node.choices = [];
-          }
-          if (node.choices.length === 0) {
-            node.choices.push({
-              text: "Continue",
-              nodes: []
-            });
-          }
-          const choice = node.choices[0];
-          if (!choice.nodes) {
-            choice.nodes = [];
-          }
-          const newIndex = choice.nodes.length;
-          newNode.sender = "astro";
-          newNode.text = "New branch message content.";
-          choice.nodes.push(newNode);
-          newPath = `${this.selectedNodeId},choices,0,nodes,${newIndex}`;
-        }
-      }
+    if (!this.currentStory.nodes) {
+      this.currentStory.nodes = [];
     }
 
-    if (!newPath) {
-      this.currentStory.nodes.push(newNode);
-      const newIndex = this.currentStory.nodes.length - 1;
-      newPath = String(newIndex);
-    }
+    this.currentStory.nodes.push(newNode);
+    const newIndex = this.currentStory.nodes.length - 1;
+    const newPath = String(newIndex);
 
     this.renderNodeList();
     this.selectNode(newPath);
     this.engine.loadStory(this.currentStory);
+    this.triggerLocalStorageSave();
+  }
+
+  // Create a new blank dialogue node (as a child if a node is selected, else at root level)
+  createNewNode() {
+    if (this.selectedNodeId) {
+      this.createChildNode(this.selectedNodeId);
+    } else {
+      this.createTopLevelNode();
+    }
   }
 
   // Delete the currently selected node
@@ -622,6 +865,7 @@ export class StoryEditor {
       }
       
       this.engine.loadStory(this.currentStory);
+      this.triggerLocalStorageSave();
     }
   }
 
@@ -657,12 +901,16 @@ export class StoryEditor {
 
       row.querySelectorAll("input").forEach(input => {
         input.addEventListener("input", () => this.saveVariablesFromForm());
-        input.addEventListener("change", () => this.saveVariablesFromForm());
+        input.addEventListener("change", () => {
+          this.saveVariablesFromForm();
+          this.triggerLocalStorageSave();
+        });
       });
 
       row.querySelector(".btn-del-var").addEventListener("click", () => {
         row.remove();
         this.saveVariablesFromForm();
+        this.triggerLocalStorageSave();
       });
       list.appendChild(row);
     });
@@ -682,14 +930,19 @@ export class StoryEditor {
         `;
         row.querySelectorAll("input").forEach(input => {
           input.addEventListener("input", () => this.saveVariablesFromForm());
-          input.addEventListener("change", () => this.saveVariablesFromForm());
+          input.addEventListener("change", () => {
+            this.saveVariablesFromForm();
+            this.triggerLocalStorageSave();
+          });
         });
         row.querySelector(".btn-del-var").addEventListener("click", () => {
           row.remove();
           this.saveVariablesFromForm();
+          this.triggerLocalStorageSave();
         });
         list.appendChild(row);
         this.saveVariablesFromForm();
+        this.triggerLocalStorageSave();
       });
     }
   }
@@ -792,13 +1045,17 @@ export class StoryEditor {
       // Automatically save character fields whenever they change
       row.querySelectorAll("input").forEach(input => {
         input.addEventListener("input", () => this.saveCharactersFromForm(false));
-        input.addEventListener("change", () => this.saveCharactersFromForm(false));
+        input.addEventListener("change", () => {
+          this.saveCharactersFromForm(false);
+          this.triggerLocalStorageSave();
+        });
       });
 
       row.querySelector(".btn-del-char").addEventListener("click", () => {
         if (confirm(`Remove character "${key}"?`)) {
           row.remove();
           this.saveCharactersFromForm(false);
+          this.triggerLocalStorageSave();
         }
       });
       list.appendChild(row);
@@ -826,6 +1083,7 @@ export class StoryEditor {
 
         this.renderCharactersList();
         this.saveCharactersFromForm(false);
+        this.triggerLocalStorageSave();
       });
     }
 
@@ -836,6 +1094,7 @@ export class StoryEditor {
       btnSaveChars.parentNode.replaceChild(newBtn, btnSaveChars);
       newBtn.addEventListener("click", () => {
         this.saveCharactersFromForm(true);
+        this.triggerLocalStorageSave();
       });
     }
   }
@@ -864,10 +1123,17 @@ export class StoryEditor {
         this.init(parsed);
         this.engine.loadStory(parsed);
         alert(`Successfully imported tree story: ${parsed.title}`);
+        this.triggerLocalStorageSave();
       } catch (err) {
         alert("Failed to parse tree story JSON: " + err.message);
       }
     };
     reader.readAsText(file);
+  }
+
+  triggerLocalStorageSave() {
+    if (window.appCoordinator && typeof window.appCoordinator.saveStoriesToLocalStorage === 'function') {
+      window.appCoordinator.saveStoriesToLocalStorage();
+    }
   }
 }
