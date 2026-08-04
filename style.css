@@ -1461,9 +1461,10 @@ body[data-view-mode="play"] #right-panel {
     box-shadow: none !important;
   }
 
-  .phone-notch {
-    display: none;
-    /* Hide dynamic island notch */
+  .phone-notch,
+  .phone-home-indicator {
+    display: none !important;
+    /* Hide dynamic island notch and home indicator bar on small screens */
   }
 
   .phone-status-bar {
