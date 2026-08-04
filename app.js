@@ -154,15 +154,57 @@ class AppCoordinator {
     }
 
     if (this.btnNewStory) {
-      this.btnNewStory.addEventListener("click", () => {
+      this.btnNewStory.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
         audio.playClick();
-        this.createNewStory();
+        this.openNewStoryModal();
+      });
+    }
+
+    // Modal elements
+    this.modalNewStory = document.getElementById("modal-new-story");
+    this.modalNewStoryInput = document.getElementById("new-story-title-input");
+    this.btnConfirmNewStory = document.getElementById("btn-confirm-new-story");
+    this.btnCancelNewStory = document.getElementById("btn-cancel-new-story");
+    this.btnCloseNewStory = document.getElementById("btn-close-new-story-modal");
+
+    if (this.btnConfirmNewStory) {
+      this.btnConfirmNewStory.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
+        this.confirmNewStoryFromModal();
+      });
+    }
+
+    if (this.btnCancelNewStory) {
+      this.btnCancelNewStory.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
+        this.closeNewStoryModal();
+      });
+    }
+
+    if (this.btnCloseNewStory) {
+      this.btnCloseNewStory.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
+        this.closeNewStoryModal();
+      });
+    }
+
+    if (this.modalNewStoryInput) {
+      this.modalNewStoryInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          this.confirmNewStoryFromModal();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          this.closeNewStoryModal();
+        }
       });
     }
 
     // Back to conversations list action
     if (this.btnBackToChats) {
-      this.btnBackToChats.addEventListener("click", () => {
+      this.btnBackToChats.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
         audio.playClick();
         this.showChatSelector();
       });
@@ -170,14 +212,16 @@ class AppCoordinator {
 
     // Editor click buttons
     if (this.btnNewNode) {
-      this.btnNewNode.addEventListener("click", () => {
+      this.btnNewNode.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
         audio.playClick();
         this.editor.createNewNode();
       });
     }
 
     if (this.btnExport) {
-      this.btnExport.addEventListener("click", () => {
+      this.btnExport.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
         audio.playClick();
         this.editor.exportJSON();
       });
@@ -232,9 +276,37 @@ class AppCoordinator {
     });
   }
 
-  createNewStory() {
-    const title = prompt("Enter the title for your new story:", "Untitled Story");
-    if (!title) return;
+  openNewStoryModal() {
+    if (!this.modalNewStory) {
+      this.createNewStory("Untitled Story");
+      return;
+    }
+    if (this.modalNewStoryInput) {
+      this.modalNewStoryInput.value = "Untitled Story";
+    }
+    this.modalNewStory.classList.remove("hidden");
+    if (this.modalNewStoryInput) {
+      setTimeout(() => {
+        this.modalNewStoryInput.focus();
+        this.modalNewStoryInput.select();
+      }, 50);
+    }
+  }
+
+  closeNewStoryModal() {
+    if (this.modalNewStory) {
+      this.modalNewStory.classList.add("hidden");
+    }
+  }
+
+  confirmNewStoryFromModal() {
+    const title = (this.modalNewStoryInput && this.modalNewStoryInput.value.trim()) || "Untitled Story";
+    this.closeNewStoryModal();
+    this.createNewStory(title);
+  }
+
+  createNewStory(customTitle) {
+    const title = customTitle || "Untitled Story";
 
     // Save current story edits first
     if (this.editor && this.editor.currentStory && this.storySelect && this.storySelect.value) {
@@ -446,6 +518,30 @@ class AppCoordinator {
           <div class="msg-body">${msg.text}</div>
         </div>
       `;
+
+      if (isNew) {
+        // 1. Measure natural height at full layout width
+        const naturalHeight = msgEl.getBoundingClientRect().height;
+
+        // 2. Set initial collapsed state before enabling transition
+        msgEl.style.maxHeight = "0px";
+        msgEl.style.opacity = "0";
+
+        // 3. Queue animation on next paint frame so browser commits the 0px start frame
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            msgEl.classList.add("msg-expanding");
+            msgEl.style.maxHeight = naturalHeight + "px";
+            msgEl.style.opacity = "1";
+          });
+        });
+
+        setTimeout(() => {
+          msgEl.classList.remove("msg-expanding");
+          msgEl.style.maxHeight = "";
+          msgEl.style.opacity = "";
+        }, 400);
+      }
     }
 
     this.scrollToBottom();

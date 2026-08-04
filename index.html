@@ -32,68 +32,70 @@
 
     <!-- LEFT PANEL: Visual Story Editor -->
     <section id="left-panel" class="panel editor-panel mobile-hidden">
-      
-      <!-- Nodes list sidebar -->
-      <div class="editor-sidebar">
-        <div class="sidebar-title">
-          <h2>Story Nodes</h2>
-          <button id="btn-new-node" class="btn btn-accent btn-xs" title="Create a new dialogue node">+ New</button>
-        </div>
-        <div id="node-list" class="node-list-scroller">
-          <!-- Populated dynamically with node keys -->
-        </div>
-        <div class="sidebar-title" style="border-top: 1px solid var(--border-translucent); border-bottom: none; padding: 12px 16px;">
-          <button id="btn-new-story" class="btn btn-primary btn-xs" style="width: 100%;">✨ New Story</button>
-        </div>
-        <div class="sidebar-title" style="border-top: 1px solid var(--border-translucent); border-bottom: none; gap: 6px; padding: 0 16px 12px 16px;">
-          <button id="btn-import-story" class="btn btn-secondary btn-xs" style="flex: 1;" title="Import Story JSON">📥 Import</button>
-          <button id="btn-export-story" class="btn btn-secondary btn-xs" style="flex: 1;" title="Export Story JSON">📤 Export</button>
-          <button id="btn-export-build" class="btn btn-accent btn-xs" style="flex: 1;" title="Export Standalone Web Game">🚀 Build</button>
-          <input type="file" id="import-file-input" class="hidden" accept=".json">
-        </div>
-      </div>
-
-      <!-- Main editor config form and settings panel -->
-      <div class="editor-workspace-scroller">
+      <div class="editor-workspace-scroller full-width-workspace">
         
-        <!-- Character Profiles Config panel -->
-        <div class="config-group">
-          <h3>👥 Characters Settings</h3>
-          <div id="characters-config-list">
-            <!-- Dynamic character profile cards -->
+        <!-- Top Toolbar with Story Management Buttons -->
+        <div class="editor-toolbar">
+          <div class="toolbar-title">
+            <h2>Story Workspace</h2>
           </div>
-          <div style="display: flex; gap: 8px; margin-top: 10px;">
-            <button id="btn-add-char" class="btn btn-secondary btn-sm" style="width: 100%;">+ Add Character</button>
-          </div>
-        </div>
-
-        <!-- Start Variables Config panel -->
-        <div class="config-group">
-          <h3>📊 Start Variables</h3>
-          <div id="variables-config-list">
-            <!-- Dynamic variables configuration options -->
-          </div>
-          <div style="display: flex; gap: 8px; margin-top: 10px;">
-            <button id="btn-add-var" class="btn btn-secondary btn-sm" style="width: 100%;">+ Add Variable</button>
+          <div class="toolbar-actions">
+            <button id="btn-new-story" type="button" class="btn btn-primary btn-sm">✨ New Story</button>
+            <button id="btn-import-story" type="button" class="btn btn-secondary btn-sm" title="Import Story JSON">📥 Import</button>
+            <button id="btn-export-story" type="button" class="btn btn-secondary btn-sm" title="Export Story JSON">📤 Export</button>
+            <button id="btn-export-build" type="button" class="btn btn-accent btn-sm" title="Export Standalone Web Game">🚀 Build</button>
+            <input type="file" id="import-file-input" class="hidden" accept=".json">
           </div>
         </div>
 
-        <!-- Node editing details form -->
-        <div class="config-group" style="background: rgba(255, 255, 255, 0.03); border-color: rgba(168, 85, 247, 0.2);">
-          <h3>📝 Edit Selected Node</h3>
-          <form id="node-form-container" onsubmit="return false;">
-            <!-- Rendered dynamically by editor.js -->
-          </form>
+        <!-- Top Settings Grid: Character Settings & Start Variables & Live Variables -->
+        <div class="top-settings-grid">
+          
+          <!-- Character Profiles Config panel -->
+          <div class="config-group">
+            <h3>👥 Characters Settings</h3>
+            <div id="characters-config-list">
+              <!-- Dynamic character profile cards -->
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 10px;">
+              <button id="btn-add-char" type="button" class="btn btn-secondary btn-sm" style="width: 100%;">+ Add Character</button>
+            </div>
+          </div>
+
+          <!-- Start Variables Config panel -->
+          <div class="config-group">
+            <h3>📊 Start Variables</h3>
+            <div id="variables-config-list">
+              <!-- Dynamic variables configuration options -->
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 10px;">
+              <button id="btn-add-var" type="button" class="btn btn-secondary btn-sm" style="width: 100%;">+ Add Variable</button>
+            </div>
+          </div>
+
+          <!-- Variables state tracking board -->
+          <div class="config-group vars-debugger-panel">
+            <div class="vars-debugger-header" style="margin-bottom: 8px;">
+              <h3 style="margin: 0; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center;">
+                <span>⚡ Live Game Variables</span>
+                <span style="color: var(--color-success); font-size: 0.75rem;">Active</span>
+              </h3>
+            </div>
+            <div id="variables-tracker" class="variables-container">
+              <!-- Dynamic chips -->
+            </div>
+          </div>
+
         </div>
 
-        <!-- Variables state tracking board (Visible for testing values in play) -->
-        <div class="vars-debugger-panel">
-          <div class="vars-debugger-header">
-            <span>Live Game Variables</span>
-            <span style="color: var(--color-success); font-size: 0.75rem;">Active</span>
+        <!-- Full-Width Story Nodes View Section -->
+        <div class="config-group node-view-section">
+          <div class="node-view-header">
+            <h3>🌳 Story Nodes</h3>
+            <button id="btn-new-node" type="button" class="btn btn-accent btn-sm" title="Create a new top-level dialogue node">+ Add Node at End</button>
           </div>
-          <div id="variables-tracker" class="variables-container">
-            <!-- Dynamic chips -->
+          <div id="node-list" class="node-list-scroller full-width-node-list">
+            <!-- Rendered dynamically with inline editable node cards -->
           </div>
         </div>
 
@@ -186,7 +188,25 @@
 
   </main>
 
-  <!-- Load Modules -->
+  <!-- Load Main Application Module -->
   <script type="module" src="app.js?v=1.5"></script>
+
+  <!-- Custom Modal for New Story Creation -->
+  <div id="modal-new-story" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>✨ Create New Story</h3>
+        <button type="button" class="btn-close-modal" id="btn-close-new-story-modal">✖</button>
+      </div>
+      <div class="modal-body">
+        <label for="new-story-title-input" class="modal-label">Story Title</label>
+        <input type="text" id="new-story-title-input" class="modal-input" placeholder="e.g. Lost in Sector 4..." value="Untitled Story">
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="btn-cancel-new-story" class="btn btn-secondary btn-sm">Cancel</button>
+        <button type="button" id="btn-confirm-new-story" class="btn btn-primary btn-sm">Create Story</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

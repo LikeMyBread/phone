@@ -25,6 +25,7 @@ export class StoryEditor {
     this.createNewNode = this.createNewNode.bind(this);
     this.createChildNode = this.createChildNode.bind(this);
     this.createTopLevelNode = this.createTopLevelNode.bind(this);
+    this.insertNodeAfter = this.insertNodeAfter.bind(this);
     this.moveNode = this.moveNode.bind(this);
     this.deleteCurrentNode = this.deleteCurrentNode.bind(this);
     this.exportJSON = this.exportJSON.bind(this);
@@ -39,14 +40,15 @@ export class StoryEditor {
     this.editFormContainer = document.getElementById("node-form-container");
     this.storySelect = document.getElementById("story-select");
 
-    // Automatically save node changes on any input or change event in the form
-    this.editFormContainer.addEventListener("input", () => {
-      this.saveNodeFromForm();
-    });
-    this.editFormContainer.addEventListener("change", () => {
-      this.saveNodeFromForm();
-      this.triggerLocalStorageSave();
-    });
+    if (this.editFormContainer) {
+      this.editFormContainer.addEventListener("input", () => {
+        this.saveNodeFromForm();
+      });
+      this.editFormContainer.addEventListener("change", () => {
+        this.saveNodeFromForm();
+        this.triggerLocalStorageSave();
+      });
+    }
 
     this.renderNodeList();
     this.renderCharactersList();
@@ -55,8 +57,6 @@ export class StoryEditor {
     // Select first root node
     if (this.currentStory.nodes && this.currentStory.nodes.length > 0) {
       this.selectNode("0");
-    } else {
-      this.editFormContainer.innerHTML = `<span class="empty-vars">No nodes in story. Click "+ New" in sidebar.</span>`;
     }
   }
 
@@ -94,7 +94,7 @@ export class StoryEditor {
     }
   }
 
-  // Recursive Tree Rendering
+  // Recursive Tree Rendering with Full Inline Editable Node Cards
   renderNodeList() {
     if (!this.nodeListContainer) return;
     this.nodeListContainer.innerHTML = "";
@@ -107,10 +107,11 @@ export class StoryEditor {
 
         const nodeDiv = document.createElement("div");
         nodeDiv.className = `node-item ${pathStr === this.selectedNodeId ? 'active' : ''}`;
-        nodeDiv.style.paddingLeft = `${depth * 16 + 10}px`;
+        nodeDiv.style.marginLeft = `${depth * 20}px`;
         nodeDiv.dataset.path = pathStr;
         nodeDiv.draggable = true;
 
+        // Drag and Drop Event Handlers
         nodeDiv.addEventListener("dragstart", (e) => {
           e.stopPropagation();
           this.draggedPathStr = pathStr;
@@ -132,7 +133,6 @@ export class StoryEditor {
           e.preventDefault();
           e.stopPropagation();
           if (!this.draggedPathStr || this.draggedPathStr === pathStr) return;
-          // Prevent dropping a node into its own descendant
           if (pathStr.startsWith(this.draggedPathStr + ",")) return;
 
           e.dataTransfer.dropEffect = "move";
@@ -161,7 +161,7 @@ export class StoryEditor {
           e.stopPropagation();
           const draggedPath = this.draggedPathStr || e.dataTransfer.getData("text/plain");
           if (!draggedPath || draggedPath === pathStr) return;
-          if (pathStr.startsWith(draggedPath + ",")) return; // Prevent dropping parent into child
+          if (pathStr.startsWith(draggedPath + ",")) return;
 
           const rect = nodeDiv.getBoundingClientRect();
           const offsetY = e.clientY - rect.top;
@@ -177,41 +177,245 @@ export class StoryEditor {
           this.moveNode(draggedPath, pathStr, position);
         });
 
-        const label = document.createElement("div");
-        label.className = "node-label";
+        nodeDiv.addEventListener("click", () => this.selectNode(pathStr));
 
-        const title = document.createElement("span");
-        title.className = "node-id-txt";
+        // 1. Node Card Header
+        const headerDiv = document.createElement("div");
+        headerDiv.className = "node-card-header";
+
+        const leftHead = document.createElement("div");
+        leftHead.className = "node-header-left";
+        leftHead.innerHTML = `
+          <span class="drag-handle" title="Drag to reorder or nest">⋮⋮</span>
+          <span class="node-path-badge">Node #${pathStr}</span>
+        `;
+
+        const typeSelect = document.createElement("select");
+        typeSelect.className = "node-type-select";
+        typeSelect.innerHTML = `
+          <option value="normal" ${node.type !== 'conditional' ? 'selected' : ''}>💬 Dialogue</option>
+          <option value="conditional" ${node.type === 'conditional' ? 'selected' : ''}>⚡ Conditional</option>
+        `;
+        typeSelect.addEventListener("change", (e) => {
+          e.stopPropagation();
+          const val = e.target.value;
+          if (val === "conditional") {
+            node.type = "conditional";
+            node.variable = node.variable || "";
+            node.operator = node.operator || "==";
+            node.value = node.value !== undefined ? node.value : 0;
+            node.trueNodes = node.trueNodes || [];
+            node.falseNodes = node.falseNodes || [];
+          } else {
+            node.type = "normal";
+            node.sender = node.sender || "system";
+            node.text = node.text || "";
+            node.delay = node.delay !== undefined ? node.delay : 500;
+            node.choices = node.choices || [];
+          }
+          this.renderNodeList();
+          this.engine.loadStory(this.currentStory);
+          this.triggerLocalStorageSave();
+        });
+
+        const rightHead = document.createElement("div");
+        rightHead.className = "node-header-right";
+
+        const btnPlay = document.createElement("button");
+        btnPlay.type = "button";
+        btnPlay.className = "btn btn-accent btn-xs";
+        btnPlay.title = "Play from here";
+        btnPlay.innerHTML = "▶ Play";
+        btnPlay.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.engine.loadStory(this.currentStory);
+          this.engine.advanceToPath(pathStr);
+          if (window.appCoordinator) {
+            window.appCoordinator.switchViewMode("play");
+          }
+        });
+
+        const btnDelete = document.createElement("button");
+        btnDelete.type = "button";
+        btnDelete.className = "btn btn-danger btn-xs";
+        btnDelete.title = "Delete node";
+        btnDelete.innerHTML = "🗑";
+        btnDelete.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (confirm(`Delete node #${pathStr}?`)) {
+            const { parentList, index } = this.resolvePath(pathStr);
+            parentList.splice(index, 1);
+            this.selectedNodeId = null;
+            this.renderNodeList();
+            this.engine.loadStory(this.currentStory);
+            this.triggerLocalStorageSave();
+          }
+        });
+
+        rightHead.appendChild(typeSelect);
+        rightHead.appendChild(btnPlay);
+        rightHead.appendChild(btnDelete);
+
+        headerDiv.appendChild(leftHead);
+        headerDiv.appendChild(rightHead);
+        nodeDiv.appendChild(headerDiv);
+
+        // 2. Node Card Body Inputs
+        const bodyDiv = document.createElement("div");
+        bodyDiv.className = "node-card-body";
 
         if (node.type === "conditional") {
-          title.textContent = `⚡ If ${node.variable || '?'} ${node.operator || '=='} ${node.value || 0}`;
+          const condRow = document.createElement("div");
+          condRow.className = "node-card-row cond-row";
+          condRow.innerHTML = `
+            <div class="field-group" style="flex: 1;">
+              <label>If Variable</label>
+              <input type="text" class="cond-var-input" placeholder="variable" value="${node.variable || ''}">
+            </div>
+            <div class="field-group" style="width: 80px;">
+              <label>Check</label>
+              <select class="cond-op-select">
+                <option value="==" ${(node.operator === '==') ? 'selected' : ''}>==</option>
+                <option value="!=" ${(node.operator === '!=') ? 'selected' : ''}>!=</option>
+                <option value=">" ${(node.operator === '>') ? 'selected' : ''}>&gt;</option>
+                <option value=">=" ${(node.operator === '>=') ? 'selected' : ''}>&gt;=</option>
+                <option value="<" ${(node.operator === '<') ? 'selected' : ''}>&lt;</option>
+                <option value="<=" ${(node.operator === '<=') ? 'selected' : ''}>&lt;=</option>
+              </select>
+            </div>
+            <div class="field-group" style="width: 80px;">
+              <label>Value</label>
+              <input type="number" class="cond-val-input" value="${node.value !== undefined ? node.value : 0}">
+            </div>
+          `;
+
+          const varInput = condRow.querySelector(".cond-var-input");
+          const opSelect = condRow.querySelector(".cond-op-select");
+          const valInput = condRow.querySelector(".cond-val-input");
+
+          const saveCond = () => {
+            node.variable = varInput.value.trim();
+            node.operator = opSelect.value;
+            node.value = parseInt(valInput.value) || 0;
+            this.engine.loadStory(this.currentStory);
+            this.triggerLocalStorageSave();
+          };
+
+          [varInput, opSelect, valInput].forEach(el => {
+            el.addEventListener("input", saveCond);
+            el.addEventListener("change", saveCond);
+          });
+
+          bodyDiv.appendChild(condRow);
         } else {
-          const char = this.currentStory.characters[node.sender] || { name: "System" };
-          title.textContent = `💬 ${char.name} (${node.sender})`;
+          const metaRow = document.createElement("div");
+          metaRow.className = "node-card-row two-cols";
+
+          const charOptionsHtml = Object.keys(this.currentStory.characters || {}).map(charKey => `
+            <option value="${charKey}" ${node.sender === charKey ? 'selected' : ''}>
+              ${this.currentStory.characters[charKey].name} (${charKey})
+            </option>
+          `).join('');
+
+          metaRow.innerHTML = `
+            <div class="field-group" style="flex: 1;">
+              <label>Sender / Character</label>
+              <select class="node-sender-select">
+                <option value="system" ${node.sender === 'system' ? 'selected' : ''}>[System Message]</option>
+                ${charOptionsHtml}
+              </select>
+            </div>
+            <div class="field-group" style="width: 140px;">
+              <label>Delay (ms)</label>
+              <input type="number" class="node-delay-input" min="0" value="${node.delay !== undefined ? node.delay : 500}">
+            </div>
+          `;
+
+          const senderSelect = metaRow.querySelector(".node-sender-select");
+          const delayInput = metaRow.querySelector(".node-delay-input");
+
+          const saveMeta = () => {
+            node.sender = senderSelect.value;
+            node.delay = parseInt(delayInput.value) || 0;
+            this.engine.loadStory(this.currentStory);
+            this.triggerLocalStorageSave();
+          };
+
+          senderSelect.addEventListener("change", saveMeta);
+          delayInput.addEventListener("input", saveMeta);
+          delayInput.addEventListener("change", saveMeta);
+
+          bodyDiv.appendChild(metaRow);
+
+          const textRow = document.createElement("div");
+          textRow.className = "node-card-row";
+          textRow.style.flexDirection = "column";
+          textRow.style.alignItems = "stretch";
+          textRow.innerHTML = `
+            <label>Message Content</label>
+            <textarea class="node-text-input" rows="2" placeholder="Enter message content...">${node.text || ''}</textarea>
+          `;
+
+          const textInput = textRow.querySelector(".node-text-input");
+          const saveText = () => {
+            node.text = textInput.value;
+            this.engine.loadStory(this.currentStory);
+            this.triggerLocalStorageSave();
+          };
+          textInput.addEventListener("input", saveText);
+          textInput.addEventListener("change", saveText);
+
+          bodyDiv.appendChild(textRow);
+
+          const choicesHead = document.createElement("div");
+          choicesHead.className = "choices-head-row";
+          choicesHead.innerHTML = `
+            <span class="choices-title">Player Branching Choices</span>
+          `;
+          const btnAddChoiceOpt = document.createElement("button");
+          btnAddChoiceOpt.type = "button";
+          btnAddChoiceOpt.className = "btn btn-secondary btn-xs";
+          btnAddChoiceOpt.innerHTML = "+ Option";
+          btnAddChoiceOpt.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (!node.choices) node.choices = [];
+            node.choices.push({ text: "New Option", nodes: [] });
+            this.renderNodeList();
+            this.engine.loadStory(this.currentStory);
+            this.triggerLocalStorageSave();
+          });
+          choicesHead.appendChild(btnAddChoiceOpt);
+          bodyDiv.appendChild(choicesHead);
         }
-        label.appendChild(title);
-        nodeDiv.appendChild(label);
 
-        const snippet = document.createElement("div");
-        snippet.className = "node-snippet";
-        snippet.textContent = node.text || `[Conditional Branch]`;
-        nodeDiv.appendChild(snippet);
+        nodeDiv.appendChild(bodyDiv);
 
-        // Quick add child button container
-        const btnAddChild = document.createElement("button");
-        btnAddChild.type = "button";
-        btnAddChild.className = "btn-node-add-child";
-        btnAddChild.title = "Add child node";
-        btnAddChild.innerHTML = "+ Add Child";
-        btnAddChild.addEventListener("click", (e) => {
+        // 3. Node Card Footer Actions
+        const footerDiv = document.createElement("div");
+        footerDiv.className = "node-card-footer";
+
+        const btnAddChildNode = document.createElement("button");
+        btnAddChildNode.type = "button";
+        btnAddChildNode.className = "btn-node-add-action btn-node-add-child";
+        btnAddChildNode.innerHTML = "+ Add Child Node";
+        btnAddChildNode.addEventListener("click", (e) => {
           e.stopPropagation();
           this.createChildNode(pathStr);
         });
 
-        // Append quick add button under node content inside nodeDiv
-        nodeDiv.appendChild(btnAddChild);
+        const btnInsertNodeBelow = document.createElement("button");
+        btnInsertNodeBelow.type = "button";
+        btnInsertNodeBelow.className = "btn-node-add-action btn-node-insert-below";
+        btnInsertNodeBelow.innerHTML = "+ Insert Node Below";
+        btnInsertNodeBelow.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.insertNodeAfter(pathStr);
+        });
 
-        nodeDiv.addEventListener("click", () => this.selectNode(pathStr));
+        footerDiv.appendChild(btnAddChildNode);
+        footerDiv.appendChild(btnInsertNodeBelow);
+        nodeDiv.appendChild(footerDiv);
+
         this.nodeListContainer.appendChild(nodeDiv);
 
         // Process Choices
@@ -219,11 +423,7 @@ export class StoryEditor {
           node.choices.forEach((choice, choiceIdx) => {
             const choiceDiv = document.createElement("div");
             choiceDiv.className = "node-choice-sidebar-item";
-            choiceDiv.style.paddingLeft = `${(depth + 1) * 16 + 10}px`;
-            choiceDiv.innerHTML = `
-              <span class="choice-sidebar-bullet">↳</span> 
-              <span class="choice-sidebar-txt">${choice.text}</span>
-            `;
+            choiceDiv.style.marginLeft = `${(depth + 1) * 20}px`;
 
             const choicePathStr = `${pathStr},choices,${choiceIdx}`;
 
@@ -250,6 +450,90 @@ export class StoryEditor {
               this.moveNode(draggedPath, choicePathStr, "choice");
             });
 
+            let actKey = "";
+            let actVal = "";
+            if (choice.actions && Object.keys(choice.actions).length > 0) {
+              actKey = Object.keys(choice.actions)[0];
+              actVal = choice.actions[actKey];
+            }
+
+            const varKeys = Object.keys(this.currentStory.variables || {});
+            const charKeys = Object.keys(this.currentStory.characters || {});
+
+            choiceDiv.innerHTML = `
+              <div class="choice-card-inner">
+                <div class="choice-text-row">
+                  <span class="choice-bullet">↳</span>
+                  <div class="choice-input-wrapper">
+                    <label class="choice-input-label">Choice Text (Player Option)</label>
+                    <input type="text" class="choice-text-input" placeholder="Choice option text (what player clicks)..." value="${choice.text || ''}">
+                  </div>
+                </div>
+                <div class="choice-options-row">
+                  <div class="choice-option-group">
+                    <label>In Chat:</label>
+                    <select class="choice-chat-select" title="Target chat conversation" style="width: 130px;">
+                      <option value="" ${!choice.chat ? 'selected' : ''}>[Current Chat]</option>
+                      ${charKeys.map(ck => `<option value="${ck}" ${choice.chat === ck ? 'selected' : ''}>${this.currentStory.characters[ck].name}</option>`).join('')}
+                    </select>
+                  </div>
+                  <div class="choice-option-group">
+                    <label>Effect:</label>
+                    <select class="choice-act-key" title="Effect variable" style="width: 110px;">
+                      <option value="" ${!actKey ? 'selected' : ''}>[No Effect]</option>
+                      ${varKeys.map(vk => `<option value="${vk}" ${actKey === vk ? 'selected' : ''}>${vk}</option>`).join('')}
+                    </select>
+                    <input type="number" class="choice-act-val" placeholder="+val" value="${actVal !== undefined ? actVal : ''}" style="width: 60px;" title="Effect amount">
+                  </div>
+                  <div class="choice-actions-group">
+                    <button type="button" class="btn btn-secondary btn-xs btn-add-choice-child" title="Add child node to this choice">+ Child Node</button>
+                    <button type="button" class="btn btn-danger btn-xs btn-del-choice" title="Delete choice">✖</button>
+                  </div>
+                </div>
+              </div>
+            `;
+
+            const chTextInput = choiceDiv.querySelector(".choice-text-input");
+            const chChatSelect = choiceDiv.querySelector(".choice-chat-select");
+            const chActKey = choiceDiv.querySelector(".choice-act-key");
+            const chActVal = choiceDiv.querySelector(".choice-act-val");
+
+            const saveChoice = () => {
+              choice.text = chTextInput.value;
+              if (chChatSelect.value) {
+                choice.chat = chChatSelect.value;
+              } else {
+                delete choice.chat;
+              }
+              const k = chActKey.value;
+              const v = parseInt(chActVal.value);
+              if (k && !isNaN(v)) {
+                choice.actions = { [k]: v };
+              } else {
+                delete choice.actions;
+              }
+              this.engine.loadStory(this.currentStory);
+              this.triggerLocalStorageSave();
+            };
+
+            [chTextInput, chChatSelect, chActKey, chActVal].forEach(el => {
+              el.addEventListener("input", saveChoice);
+              el.addEventListener("change", saveChoice);
+            });
+
+            choiceDiv.querySelector(".btn-del-choice").addEventListener("click", (e) => {
+              e.stopPropagation();
+              node.choices.splice(choiceIdx, 1);
+              this.renderNodeList();
+              this.engine.loadStory(this.currentStory);
+              this.triggerLocalStorageSave();
+            });
+
+            choiceDiv.querySelector(".btn-add-choice-child").addEventListener("click", (e) => {
+              e.stopPropagation();
+              this.addChildNodeToChoice(pathStr, choiceIdx);
+            });
+
             this.nodeListContainer.appendChild(choiceDiv);
 
             if (choice.nodes && choice.nodes.length > 0) {
@@ -260,20 +544,35 @@ export class StoryEditor {
 
         // Process Condition true/false sub-lists
         if (node.type === "conditional") {
+          const trueHeader = document.createElement("div");
+          trueHeader.className = "node-choice-sidebar-item cond-header-label";
+          trueHeader.style.marginLeft = `${(depth + 1) * 20}px`;
+          trueHeader.innerHTML = `
+            <span style="color: var(--color-success); font-weight: 600;">✔ True Branch:</span>
+            <button type="button" class="btn btn-secondary btn-xs btn-add-true-child" style="margin-left: 8px;">+ Node</button>
+          `;
+          trueHeader.querySelector(".btn-add-true-child").addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.addNodeToConditionalBranch(pathStr, "trueNodes");
+          });
+          this.nodeListContainer.appendChild(trueHeader);
           if (node.trueNodes && node.trueNodes.length > 0) {
-            const header = document.createElement("div");
-            header.className = "node-choice-sidebar-item cond-header-label";
-            header.style.paddingLeft = `${(depth + 1) * 16 + 10}px`;
-            header.innerHTML = `<span>✔ True branch:</span>`;
-            this.nodeListContainer.appendChild(header);
             traverse(node.trueNodes, depth + 2, [...currentPath, "trueNodes"]);
           }
+
+          const falseHeader = document.createElement("div");
+          falseHeader.className = "node-choice-sidebar-item cond-header-label";
+          falseHeader.style.marginLeft = `${(depth + 1) * 20}px`;
+          falseHeader.innerHTML = `
+            <span style="color: var(--color-danger); font-weight: 600;">✖ False Branch:</span>
+            <button type="button" class="btn btn-secondary btn-xs btn-add-false-child" style="margin-left: 8px;">+ Node</button>
+          `;
+          falseHeader.querySelector(".btn-add-false-child").addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.addNodeToConditionalBranch(pathStr, "falseNodes");
+          });
+          this.nodeListContainer.appendChild(falseHeader);
           if (node.falseNodes && node.falseNodes.length > 0) {
-            const header = document.createElement("div");
-            header.className = "node-choice-sidebar-item cond-header-label";
-            header.style.paddingLeft = `${(depth + 1) * 16 + 10}px`;
-            header.innerHTML = `<span>✖ False branch:</span>`;
-            this.nodeListContainer.appendChild(header);
             traverse(node.falseNodes, depth + 2, [...currentPath, "falseNodes"]);
           }
         }
@@ -310,7 +609,6 @@ export class StoryEditor {
       if (lastTopIndex >= 0) {
         this.moveNode(draggedPath, String(lastTopIndex), "after");
       } else {
-        // If story has no nodes, move as child of none / top level
         this.moveNode(draggedPath, "0", "after");
       }
     });
@@ -328,273 +626,51 @@ export class StoryEditor {
     this.nodeListContainer.appendChild(addTopLevelContainer);
   }
 
-  // Load a single node into form editor
-  selectNode(pathStr) {
+  // Load / highlight a single node
+  selectNode(pathStr, autoScroll = false) {
     this.selectedNodeId = pathStr;
     const node = this.getNodeByPath(pathStr);
     if (!node) return;
 
-    // Highlight sidebar active item
     document.querySelectorAll(".node-item").forEach(item => {
       item.classList.toggle("active", item.dataset.path === pathStr);
     });
 
-    const isRootNode = !pathStr.includes(",");
-
-    // Generate Form HTML dynamically
-    let html = `
-      <div class="form-row">
-        <label>Tree Path</label>
-        <input type="text" value="${pathStr}" disabled style="background: rgba(255, 255, 255, 0.05); color: var(--text-muted);">
-      </div>
-
-      <div class="form-row">
-        <label>Node Type</label>
-        <div class="flow-mode-selector">
-          <label class="radio-btn">
-            <input type="radio" name="node-type" value="normal" ${node.type !== 'conditional' ? 'checked' : ''}> Standard Dialogue
-          </label>
-          <label class="radio-btn">
-            <input type="radio" name="node-type" value="conditional" ${node.type === 'conditional' ? 'checked' : ''}> Conditional Branch
-          </label>
-        </div>
-      </div>
-
-      <!-- Dialogue Node Panel -->
-      <div id="panel-normal-editor" class="${node.type === 'conditional' ? 'hidden' : ''}">
-        <div class="form-row">
-          <label for="edit-sender">Sender / Character</label>
-          <select id="edit-sender">
-            <option value="system" ${node.sender === 'system' ? 'selected' : ''}>[System Message]</option>
-            ${Object.keys(this.currentStory.characters).map(charKey => `
-              <option value="${charKey}" ${node.sender === charKey ? 'selected' : ''}>
-                ${this.currentStory.characters[charKey].name} (${charKey})
-              </option>
-            `).join('')}
-          </select>
-        </div>
-
-        <div class="form-row">
-          <label for="edit-text">Message Content</label>
-          <textarea id="edit-text" rows="3">${node.text || ''}</textarea>
-        </div>
-
-        <div class="form-row">
-          <label for="edit-delay">Delay Before Showing (ms)</label>
-          <input type="number" id="edit-delay" value="${node.delay !== undefined ? node.delay : 1000}" min="0">
-        </div>
-
-        <hr class="editor-divider">
-
-        <div class="form-row">
-          <label>Player Branching Choices</label>
-          <div id="choices-list-editor">
-            <!-- Choice fields -->
-          </div>
-          <button type="button" id="btn-add-choice" class="btn btn-secondary btn-sm">+ Add Choice Option</button>
-        </div>
-      </div>
-
-      <!-- Conditional Node Panel -->
-      <div id="panel-conditional-editor" class="${node.type !== 'conditional' ? 'hidden' : ''}">
-        <div class="form-row math-row" style="display: flex; align-items: center; gap: 8px;">
-          <div style="flex: 1;">
-            <label>If Variable</label>
-            <input type="text" id="cond-var" value="${node.variable || ''}" placeholder="trust">
-          </div>
-          <div style="width: 80px;">
-            <label>Check</label>
-            <select id="cond-op">
-              <option value="==" ${(node.operator === '==') ? 'selected' : ''}>==</option>
-              <option value="!=" ${(node.operator === '!=') ? 'selected' : ''}>!=</option>
-              <option value=">" ${(node.operator === '>') ? 'selected' : ''}>&gt;</option>
-              <option value=">=" ${(node.operator === '>=') ? 'selected' : ''}>&gt;=</option>
-              <option value="<" ${(node.operator === '<') ? 'selected' : ''}>&lt;</option>
-              <option value="<=" ${(node.operator === '<=') ? 'selected' : ''}>&lt;=</option>
-            </select>
-          </div>
-          <div style="width: 80px;">
-            <label>Value</label>
-            <input type="number" id="cond-val" value="${node.value !== undefined ? node.value : 0}">
-          </div>
-        </div>
-
-        <div style="display: flex; gap: 8px; margin-top: 16px;">
-          <button type="button" id="btn-add-true-node" class="btn btn-secondary btn-sm" style="flex: 1;">+ Add Node to True</button>
-          <button type="button" id="btn-add-false-node" class="btn btn-secondary btn-sm" style="flex: 1;">+ Add Node to False</button>
-        </div>
-      </div>
-
-      <hr class="editor-divider">
-
-       <div class="editor-actions">
-        <button type="button" id="btn-play-node" class="btn btn-accent" style="flex: 1;">Play from Here</button>
-        <button type="button" id="btn-delete-node" class="btn btn-danger">Delete Node</button>
-      </div>
-    `;
-
-    this.editFormContainer.innerHTML = html;
-
-    // Attach listeners
-    document.getElementById("btn-play-node").addEventListener("click", () => {
-      this.saveNodeFromForm();
-      this.engine.loadStory(this.currentStory);
-      this.engine.advanceToPath(pathStr);
-      if (window.appCoordinator) {
-        window.appCoordinator.switchViewMode("play");
+    if (autoScroll) {
+      const targetEl = document.querySelector(`.node-item[data-path='${pathStr}']`);
+      if (targetEl && typeof targetEl.scrollIntoView === 'function') {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
-    });
-    document.getElementById("btn-delete-node").addEventListener("click", this.deleteCurrentNode);
-
-    // Switch Panel layouts based on radio button selection
-    const normalPanel = document.getElementById("panel-normal-editor");
-    const condPanel = document.getElementById("panel-conditional-editor");
-
-    document.querySelectorAll("input[name='node-type']").forEach(radio => {
-      radio.addEventListener("change", (e) => {
-        normalPanel.classList.toggle("hidden", e.target.value === 'conditional');
-        condPanel.classList.toggle("hidden", e.target.value !== 'conditional');
-      });
-    });
-
-    // Populate standard choices
-    this.renderChoicesListEditor(node.choices || [], pathStr);
-
-    document.getElementById("btn-add-choice").addEventListener("click", () => {
-      const list = document.getElementById("choices-list-editor");
-      const idx = list.children.length;
-      list.appendChild(this.createChoiceItemMarkup("", null, idx, pathStr));
-      this.saveNodeFromForm();
-      this.triggerLocalStorageSave();
-    });
-
-    // Add branches listeners for conditional lists
-    if (node.type === "conditional") {
-      document.getElementById("btn-add-true-node").addEventListener("click", () => {
-        this.addNodeToConditionalBranch(pathStr, "trueNodes");
-      });
-      document.getElementById("btn-add-false-node").addEventListener("click", () => {
-        this.addNodeToConditionalBranch(pathStr, "falseNodes");
-      });
     }
   }
 
-  // Create HTML inputs for editing choices in standard dialogue nodes
-  createChoiceItemMarkup(text, actions, choiceIndex, parentPathStr) {
-    const wrapper = document.createElement("div");
-    wrapper.className = "choice-edit-item";
-    wrapper.style.display = "flex";
-    wrapper.style.flexDirection = "column";
-    wrapper.style.gap = "6px";
-    wrapper.dataset.index = choiceIndex;
-
-    const row1 = document.createElement("div");
-    row1.style.display = "flex";
-    row1.style.gap = "8px";
-    row1.style.alignItems = "center";
-
-    const textInput = document.createElement("input");
-    textInput.type = "text";
-    textInput.className = "choice-text-input";
-    textInput.placeholder = "Option text (what player clicks)";
-    textInput.value = text;
-    textInput.style.flex = "1";
-
-    const btnDel = document.createElement("button");
-    btnDel.type = "button";
-    btnDel.className = "btn btn-danger btn-xs";
-    btnDel.textContent = "✖";
-    btnDel.addEventListener("click", () => {
-      wrapper.remove();
-      this.saveNodeFromForm();
-      this.triggerLocalStorageSave();
-    });
-
-    row1.appendChild(textInput);
-    row1.appendChild(btnDel);
-
-    // Variables modifiers row
-    const row2 = document.createElement("div");
-    row2.className = "choice-action-row";
-    row2.style.display = "flex";
-    row2.style.alignItems = "center";
-    row2.style.gap = "6px";
-    row2.style.fontSize = "0.75rem";
-    row2.style.color = "var(--text-muted)";
-
-    let actKey = "";
-    let actVal = "";
-    if (actions && Object.keys(actions).length > 0) {
-      actKey = Object.keys(actions)[0];
-      actVal = actions[actKey];
+  saveNodeFromForm() {
+    if (this.currentStory) {
+      this.engine.loadStory(this.currentStory);
     }
-
-    // Get current choice chat target
-    const node = this.getNodeByPath(parentPathStr);
-    const selectedChat = (node && node.choices && node.choices[choiceIndex] && node.choices[choiceIndex].chat) || "";
-
-    const chatSelectHtml = `
-      <select class="choice-chat-select" style="max-width: 130px; padding: 4px; font-size: 0.8rem; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid var(--border-translucent); border-radius: 4px;">
-        <option value="" ${selectedChat === "" ? "selected" : ""}>[Current Sender]</option>
-        ${Object.keys(this.currentStory.characters).map(charKey => `
-          <option value="${charKey}" ${selectedChat === charKey ? "selected" : ""}>
-            ${this.currentStory.characters[charKey].name} (${charKey})
-          </option>
-        `).join("")}
-      </select>
-    `;
-
-    const varKeys = Object.keys(this.currentStory.variables || {});
-    const effectSelectHtml = `
-      <select class="choice-act-key" style="max-width: 100px; padding: 4px; font-size: 0.8rem; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid var(--border-translucent); border-radius: 4px;">
-        <option value="" ${actKey === "" ? "selected" : ""}>[None]</option>
-        ${varKeys.map(varKey => `
-          <option value="${varKey}" ${actKey === varKey ? "selected" : ""}>${varKey}</option>
-        `).join("")}
-      </select>
-    `;
-
-    row2.innerHTML = `
-      <span>In Chat:</span>
-      ${chatSelectHtml}
-      <span style="margin-left: 8px;">Effect:</span>
-      ${effectSelectHtml}
-      <span>+</span>
-      <input type="number" class="choice-act-val" placeholder="value" value="${actVal}" style="width: 45px; padding: 4px;">
-    `;
-
-    // Direct Add/Go buttons for nested tree nodes
-    const row3 = document.createElement("div");
-    row3.style.display = "flex";
-    row3.style.gap = "8px";
-    
-    const hasChildren = node && node.choices && node.choices[choiceIndex] && node.choices[choiceIndex].nodes && node.choices[choiceIndex].nodes.length > 0;
-
-    const btnAddSubNode = document.createElement("button");
-    btnAddSubNode.type = "button";
-    btnAddSubNode.className = "btn btn-secondary btn-xs";
-    btnAddSubNode.textContent = hasChildren ? "➕ Append Sub-Node" : "➕ Create Dialogue Branch";
-    btnAddSubNode.style.flex = "1";
-    btnAddSubNode.addEventListener("click", () => {
-      this.saveNodeFromForm(); // Save active edits first
-      this.addChildNodeToChoice(parentPathStr, choiceIndex);
-    });
-
-    row3.appendChild(btnAddSubNode);
-
-    wrapper.appendChild(row1);
-    wrapper.appendChild(row2);
-    wrapper.appendChild(row3);
-
-    return wrapper;
   }
 
-  renderChoicesListEditor(choices, parentPathStr) {
-    const container = document.getElementById("choices-list-editor");
-    container.innerHTML = "";
-    choices.forEach((ch, idx) => {
-      container.appendChild(this.createChoiceItemMarkup(ch.text, ch.actions, idx, parentPathStr));
-    });
+  // Insert a new sibling node directly after pathStr
+  insertNodeAfter(pathStr) {
+    this.saveNodeFromForm();
+
+    const { parentList, index } = this.resolvePath(pathStr);
+    const newNode = {
+      sender: "astro",
+      text: "New dialogue node content.",
+      delay: 500
+    };
+
+    parentList.splice(index + 1, 0, newNode);
+
+    const parts = pathStr.split(",");
+    parts[parts.length - 1] = index + 1;
+    const newPath = parts.join(",");
+
+    this.renderNodeList();
+    this.selectNode(newPath);
+    this.engine.loadStory(this.currentStory);
+    this.triggerLocalStorageSave();
   }
 
   // Appends a child dialogue node directly under a choice array in-place
@@ -602,15 +678,12 @@ export class StoryEditor {
     const node = this.getNodeByPath(parentPathStr);
     if (!node) return;
 
-    // Ensure the choice object exists in the array
+    if (!node.choices) node.choices = [];
     if (!node.choices[choiceIndex]) {
-      node.choices[choiceIndex] = { text: "" };
+      node.choices[choiceIndex] = { text: "Option", nodes: [] };
     }
-
     const choice = node.choices[choiceIndex];
-    if (!choice.nodes) {
-      choice.nodes = [];
-    }
+    if (!choice.nodes) choice.nodes = [];
 
     const newIndex = choice.nodes.length;
     choice.nodes.push({
@@ -622,6 +695,7 @@ export class StoryEditor {
     const targetPath = `${parentPathStr},choices,${choiceIndex},nodes,${newIndex}`;
     this.renderNodeList();
     this.selectNode(targetPath);
+    this.engine.loadStory(this.currentStory);
     this.triggerLocalStorageSave();
   }
 
@@ -644,69 +718,8 @@ export class StoryEditor {
     const targetPath = `${parentPathStr},${branchKey},${newIndex}`;
     this.renderNodeList();
     this.selectNode(targetPath);
-    this.triggerLocalStorageSave();
-  }
-
-  // Save changes from form back to draft story
-  saveNodeFromForm() {
-    if (!this.selectedNodeId) return;
-
-    const nodeType = document.querySelector("input[name='node-type']:checked").value;
-    const { parentList, index } = this.resolvePath(this.selectedNodeId);
-
-    const oldNode = parentList[index];
-
-    if (nodeType === 'conditional') {
-      const condVar = document.getElementById("cond-var").value.trim();
-      const condOp = document.getElementById("cond-op").value;
-      const condVal = parseInt(document.getElementById("cond-val").value) || 0;
-
-      parentList[index] = {
-        type: "conditional",
-        variable: condVar,
-        operator: condOp,
-        value: condVal,
-        trueNodes: oldNode.trueNodes || [],
-        falseNodes: oldNode.falseNodes || []
-      };
-    } else {
-      const sender = document.getElementById("edit-sender").value;
-      const text = document.getElementById("edit-text").value;
-      const delay = parseInt(document.getElementById("edit-delay").value) || 0;
-
-      // Extract choices list
-      const choices = [];
-      document.querySelectorAll(".choice-edit-item").forEach((item, chIdx) => {
-        const textVal = item.querySelector(".choice-text-input").value.trim();
-        const actKey = item.querySelector(".choice-act-key").value.trim();
-        const actVal = parseInt(item.querySelector(".choice-act-val").value);
-        const chatVal = item.querySelector(".choice-chat-select").value;
-
-        const choiceObj = { text: textVal || "" };
-        if (chatVal) {
-          choiceObj.chat = chatVal;
-        }
-        if (actKey && !isNaN(actVal)) {
-          choiceObj.actions = { [actKey]: actVal };
-        }
-        // Retain sub-nodes list if it exists in the original choice object
-        if (oldNode.choices && oldNode.choices[chIdx] && oldNode.choices[chIdx].nodes) {
-          choiceObj.nodes = oldNode.choices[chIdx].nodes;
-        }
-        choices.push(choiceObj);
-      });
-
-      parentList[index] = {
-        sender,
-        text,
-        delay,
-        choices
-      };
-    }
-
-    this.renderNodeList();
-    // Live update the engine
     this.engine.loadStory(this.currentStory);
+    this.triggerLocalStorageSave();
   }
 
   // Move node from source path to target path (before, after, or as child)
@@ -879,8 +892,7 @@ export class StoryEditor {
     this.currentStory.variables = newVars;
     this.engine.loadStory(this.currentStory);
     if (this.selectedNodeId) {
-      // Re-render the form to update any variable selection dropdowns dynamically
-      this.selectNode(this.selectedNodeId);
+      this.selectNode(this.selectedNodeId, false);
     }
   }
 
@@ -1011,8 +1023,7 @@ export class StoryEditor {
     }
     this.renderNodeList();
     if (this.selectedNodeId) {
-      // Re-render the form to update any character select/dropdowns dynamically
-      this.selectNode(this.selectedNodeId);
+      this.selectNode(this.selectedNodeId, false);
     }
   }
 
