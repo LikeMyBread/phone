@@ -14,16 +14,20 @@ class AppCoordinator {
     this.editor = new StoryEditor(this.engine);
     
     // Load stories from localStorage, falling back to defaultStories
-    const savedStories = localStorage.getItem('phone_stories');
-    if (savedStories) {
-      try {
-        this.stories = JSON.parse(savedStories);
-      } catch (e) {
-        console.error("Failed to parse saved stories from localStorage", e);
+    if (window.IS_STANDALONE) {
+      this.stories = typeof defaultStories !== "undefined" ? defaultStories : { "active": null };
+    } else {
+      const savedStories = localStorage.getItem('phone_stories');
+      if (savedStories) {
+        try {
+          this.stories = JSON.parse(savedStories);
+        } catch (e) {
+          console.error("Failed to parse saved stories from localStorage", e);
+          this.stories = JSON.parse(JSON.stringify(defaultStories));
+        }
+      } else {
         this.stories = JSON.parse(JSON.stringify(defaultStories));
       }
-    } else {
-      this.stories = JSON.parse(JSON.stringify(defaultStories));
     }
 
     // DOM Elements
@@ -695,6 +699,10 @@ class AppCoordinator {
   }
 
   setupViewModeTabs() {
+    if (window.IS_STANDALONE) {
+      document.body.dataset.viewMode = "play";
+      return;
+    }
     document.body.dataset.viewMode = "edit";
   }
 
@@ -718,32 +726,31 @@ class AppCoordinator {
       }
 
       // Fetch external files
-      const [cssText, audioJs, engineJs, appJs] = await Promise.all([
-        fetch("style.css").then(res => res.text()),
-        fetch("audio.js").then(res => res.text()),
-        fetch("engine.js").then(res => res.text()),
-        fetch("app.js").then(res => res.text())
-      ]);
+      let cssText, audioJs, engineJs, appJs;
+      try {
+        [cssText, audioJs, engineJs, appJs] = await Promise.all([
+          fetch("style.css").then(res => res.text()),
+          fetch("audio.js").then(res => res.text()),
+          fetch("engine.js").then(res => res.text()),
+          fetch("app.js").then(res => res.text())
+        ]);
+      } catch (err) {
+        alert("Generating a standalone build requires testing on the local HTTP server (http://localhost:8000).\n\nPlease open http://localhost:8000/ in your browser to build your story.");
+        return;
+      }
 
       // Helper function to clean JS modules imports/exports
-      const cleanScript = (jsText, isApp = false) => {
-        let cleaned = jsText
+      const cleanScript = (jsText) => {
+        return jsText
           .replace(/import\s+[\s\S]*?;\s*/g, "") // Remove imports
           .replace(/export\s+class\s+/g, "class ") // Remove export class
-          .replace(/export\s+const\s+/g, "const "); // Remove export const
-
-        if (isApp) {
-          const parts = cleaned.split("async exportBuild() {");
-          if (parts.length > 1) {
-            cleaned = parts[0] + "}\n\nwindow.addEventListener('DOMContentLoaded', () => {\n  const app = new AppCoordinator();\n  app.init();\n});";
-          }
-        }
-        return cleaned;
+          .replace(/export\s+const\s+/g, "const ") // Remove export const
+          .replace(/export\s+default\s+/g, "");
       };
 
       const cleanedAudio = cleanScript(audioJs);
       const cleanedEngine = cleanScript(engineJs);
-      const cleanedApp = cleanScript(appJs, true);
+      const cleanedApp = cleanScript(appJs);
 
       // Extract the right-panel HTML directly from the live DOM
       const phonePanelEl = document.getElementById("right-panel");
@@ -763,16 +770,22 @@ class AppCoordinator {
   <title>${activeStory.title}</title>
   <style>
     ${cssText}
-    /* Ensure standalone app centers and fills screen correctly */
-    body {
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
       overflow: hidden;
+      background: var(--bg-app);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .standalone-workspace {
+      width: 100vw;
       height: 100vh;
       display: flex;
-      flex-direction: column;
-    }
-    .workspace {
-      height: 100vh !important;
-      display: flex !important;
       justify-content: center;
       align-items: center;
     }
@@ -780,16 +793,20 @@ class AppCoordinator {
       width: 100%;
       height: 100%;
       display: flex !important;
+      justify-content: center;
+      align-items: center;
     }
   </style>
 </head>
 <body data-view-mode="play">
 
-  <main class="workspace">
+  <main class="standalone-workspace">
     ${phoneHtml}
   </main>
 
   <script>
+    window.IS_STANDALONE = true;
+
     // Embedded Story Data
     const activeStory = ${JSON.stringify(activeStory, null, 2)};
     const defaultStories = { "active": activeStory };

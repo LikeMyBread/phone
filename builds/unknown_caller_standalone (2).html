@@ -1,0 +1,3226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unknown Caller</title>
+  <style>
+    /*
+ * Modern Phone CYOA Engine Stylesheet
+ * Incorporates premium glassmorphism, responsive grids, custom animations, and a high-fidelity phone frame model.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* Colors */
+  --bg-app: #080710;
+  --bg-editor: rgba(18, 17, 28, 0.7);
+  --bg-phone-bezel: #161522;
+  --bg-phone-screen: #0f0e17;
+
+  --color-primary: #a855f7;
+  /* Violet */
+  --color-primary-glow: rgba(168, 85, 247, 0.4);
+  --color-accent: #06b6d4;
+  /* Cyan */
+  --color-accent-glow: rgba(6, 182, 212, 0.3);
+  --color-success: #10b981;
+  /* Emerald */
+  --color-warning: #f59e0b;
+  /* Amber */
+  --color-danger: #ef4444;
+  /* Red */
+
+  /* Text */
+  --text-main: #f3f4f6;
+  --text-muted: #9ca3af;
+  --text-phone-user: #ffffff;
+  --text-phone-contact: #e5e7eb;
+
+  /* Chat Bubbles */
+  --bubble-player: linear-gradient(135deg, #7c3aed, #a855f7);
+  --bubble-contact: #242235;
+  --bubble-system: rgba(30, 29, 45, 0.8);
+
+  /* Font Family */
+  --font-outfit: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-inter: 'Inter', -apple-system, sans-serif;
+
+  /* Borders and radius */
+  --border-radius-lg: 20px;
+  --border-radius-md: 12px;
+  --border-radius-sm: 8px;
+  --border-translucent: rgba(255, 255, 255, 0.08);
+}
+
+/* Base resets */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: var(--font-inter);
+}
+
+body {
+  background: radial-gradient(circle at 50% 50%, #171430 0%, var(--bg-app) 80%);
+  color: var(--text-main);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Application Header */
+.app-header {
+  background: rgba(10, 9, 18, 0.6);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-translucent);
+  padding: 12px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+}
+
+.brand-section h1 {
+  font-family: var(--font-outfit);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: linear-gradient(to right, #00f0ff, #a855f7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-section h1 span {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  border: 1px solid var(--border-translucent);
+  padding: 2px 6px;
+  border-radius: var(--border-radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  -webkit-text-fill-color: var(--text-muted);
+}
+
+.app-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Workspace Layout Grid */
+.workspace {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(750px, 1.4fr) 0.6fr;
+  height: calc(100vh - 65px);
+  overflow: hidden;
+}
+
+/* Scrollbars styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Panel Containers */
+.panel {
+  height: 100%;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* LEFT PANEL (Story Editor) */
+.editor-panel {
+  background: var(--bg-editor);
+  backdrop-filter: blur(12px);
+  border-right: 1px solid var(--border-translucent);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  min-height: 0;
+}
+
+.full-width-workspace {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  min-height: 0;
+}
+
+/* Top Toolbar */
+.editor-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-translucent);
+  border-radius: var(--border-radius-md);
+  padding: 12px 18px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.toolbar-title h2 {
+  font-family: var(--font-outfit);
+  font-size: 1.1rem;
+  color: var(--text-main);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Top Settings Grid */
+.top-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* Node View Section */
+.node-view-section {
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-translucent);
+  border-radius: var(--border-radius-md);
+  padding: 20px;
+}
+
+.node-view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-translucent);
+}
+
+.node-view-header h3 {
+  font-family: var(--font-outfit);
+  font-size: 1.2rem;
+  color: var(--color-accent);
+  margin: 0;
+}
+
+.full-width-node-list {
+  padding: 0;
+}
+
+/* Inline Editable Node Card */
+.node-item {
+  padding: 14px 16px;
+  border-radius: var(--border-radius-md);
+  background: rgba(20, 19, 32, 0.7);
+  border: 1px solid var(--border-translucent);
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.node-item:hover {
+  background: rgba(25, 24, 40, 0.85);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.node-item.active {
+  background: rgba(168, 85, 247, 0.08);
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.15);
+}
+
+.node-item.start {
+  border-left: 4px solid var(--color-success);
+}
+
+.node-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.node-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drag-handle {
+  cursor: grab;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  user-select: none;
+  padding: 2px 4px;
+}
+
+.drag-handle:hover {
+  color: var(--text-main);
+}
+
+.node-path-badge {
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 3px 8px;
+  border-radius: 4px;
+  color: var(--color-accent);
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.node-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.node-type-select {
+  width: auto;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.4);
+  border-color: rgba(168, 85, 247, 0.3);
+  border-radius: 4px;
+  color: var(--text-main);
+}
+
+.node-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.node-card-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.node-card-row.two-cols {
+  display: grid;
+  grid-template-columns: 1fr 140px;
+  gap: 12px;
+}
+
+.node-card-row .field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.node-card-row label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.choices-head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  margin-bottom: 4px;
+}
+
+.choices-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.node-choice-sidebar-item {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-translucent);
+  border-radius: var(--border-radius-sm);
+  padding: 12px 14px;
+  transition: all 0.2s ease;
+}
+
+.choice-card-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.choice-text-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+}
+
+.choice-bullet {
+  color: var(--color-primary);
+  font-weight: bold;
+  font-size: 1.2rem;
+  line-height: 1.8;
+}
+
+.choice-input-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.choice-input-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.choice-text-input {
+  width: 100%;
+  flex: 1;
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.choice-options-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-left: 22px;
+  width: 100%;
+}
+
+.choice-option-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.choice-option-group label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.choice-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.node-card-footer {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+}
+
+.btn-node-add-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--border-radius-sm);
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-node-add-child {
+  background: rgba(168, 85, 247, 0.12);
+  color: var(--color-primary);
+  border: 1px dashed rgba(168, 85, 247, 0.4);
+}
+
+.btn-node-add-child:hover {
+  background: rgba(168, 85, 247, 0.25);
+  border-color: rgba(168, 85, 247, 0.7);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.btn-node-insert-below {
+  background: rgba(6, 182, 212, 0.12);
+  color: var(--color-accent);
+  border: 1px dashed rgba(6, 182, 212, 0.4);
+}
+
+.btn-node-insert-below:hover {
+  background: rgba(6, 182, 212, 0.25);
+  border-color: rgba(6, 182, 212, 0.7);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.node-item.dragging {
+  opacity: 0.4;
+  border: 1px dashed var(--color-primary);
+}
+
+.node-item.drag-over-top {
+  border-top: 2px solid var(--color-accent) !important;
+  background: rgba(6, 182, 212, 0.1) !important;
+}
+
+.node-item.drag-over-bottom {
+  border-bottom: 2px solid var(--color-accent) !important;
+  background: rgba(6, 182, 212, 0.1) !important;
+}
+
+.node-item.drag-over-child {
+  border: 2px dashed var(--color-primary) !important;
+  background: rgba(168, 85, 247, 0.15) !important;
+}
+
+.node-choice-sidebar-item.drag-over-choice {
+  background: rgba(168, 85, 247, 0.25) !important;
+  border: 1px dashed var(--color-primary) !important;
+  border-radius: 4px;
+}
+
+.top-level-add-container.drag-over-toplevel {
+  background: rgba(6, 182, 212, 0.15);
+  border: 2px dashed var(--color-accent);
+  border-radius: var(--border-radius-sm);
+}
+
+.top-level-add-container {
+  padding: 10px 0;
+  transition: all 0.2s ease;
+}
+
+.node-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.node-id-txt {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-main);
+}
+
+.badge {
+  font-size: 0.7rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.start-badge {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--color-success);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.warn-badge {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--color-danger);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  cursor: help;
+  animation: pulse-warn 1.5s infinite;
+}
+
+@keyframes pulse-warn {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.node-snippet {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.editor-workspace-scroller {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  min-height: 0;
+}
+
+/* Config Tab Sections */
+.config-group {
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-translucent);
+  border-radius: var(--border-radius-md);
+  padding: 16px;
+}
+
+.config-group h3 {
+  font-family: var(--font-outfit);
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+  color: var(--color-accent);
+}
+
+/* Inputs & Form layout */
+.form-row {
+  margin-bottom: 16px;
+}
+
+.form-row.two-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-row label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-translucent);
+  border-radius: var(--border-radius-sm);
+  color: var(--text-main);
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 8px var(--color-primary-glow);
+}
+
+.label-info {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.editor-divider {
+  border: none;
+  border-top: 1px solid var(--border-translucent);
+  margin: 20px 0;
+}
+
+/* Tab Configuration / Options Section */
+.tabs-header {
+  margin-bottom: 12px;
+}
+
+.tab-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.flow-mode-selector {
+  display: flex;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 4px;
+  border-radius: var(--border-radius-sm);
+  margin-bottom: 16px;
+}
+
+.radio-btn {
+  flex: 1;
+  text-align: center;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.2s;
+}
+
+.radio-btn input {
+  margin: 0;
+}
+
+.radio-btn:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.flow-config-panel {
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px dashed var(--border-translucent);
+  border-radius: var(--border-radius-md);
+  padding: 16px;
+  margin-top: 10px;
+}
+
+.flow-config-panel.hidden {
+  display: none;
+}
+
+/* Dynamic Choices Lists */
+#choices-list-editor {
+  margin-bottom: 12px;
+}
+
+.choice-edit-item {
+  display: grid;
+  grid-template-columns: 1fr 120px 30px;
+  gap: 8px;
+  margin-bottom: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 8px;
+  border-radius: var(--border-radius-sm);
+  position: relative;
+}
+
+.choice-edit-item input {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.choice-action-row {
+  grid-column: span 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.choice-action-row input {
+  width: 90px;
+  padding: 4px;
+}
+
+.choice-action-row input.choice-act-val {
+  width: 50px;
+}
+
+/* Character Configurations mapping lists */
+.char-config-row,
+.var-config-row {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-translucent);
+  padding: 10px;
+  border-radius: var(--border-radius-sm);
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.char-keys-inputs {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 8px;
+}
+
+.char-visuals-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.char-color-input {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.char-avatar-input {
+  width: 48px !important;
+  text-align: center;
+}
+
+.player-checkbox {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.var-config-row {
+  flex-direction: row;
+  align-items: center;
+}
+
+.var-config-row input {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
+.var-config-row input.var-val-input {
+  max-width: 80px;
+}
+
+/* Actions board buttons */
+.editor-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+/* Buttons System */
+.btn {
+  border: none;
+  border-radius: var(--border-radius-sm);
+  font-weight: 600;
+  padding: 10px 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 0 10px var(--color-primary-glow);
+}
+
+.btn-primary:hover {
+  background: #b56ff9;
+  transform: translateY(-1px);
+}
+
+.btn-accent {
+  background: var(--color-accent);
+  color: #fff;
+  box-shadow: 0 0 10px var(--color-accent-glow);
+}
+
+.btn-accent:hover {
+  background: #22d3ee;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+  border: 1px solid var(--border-translucent);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.btn-danger {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #f87171;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.btn-xs {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  border-radius: 4px;
+}
+
+/* Custom sound toggle icon badge state */
+.sound-muted {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: var(--color-danger) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+/* RIGHT PANEL (Phone Simulator Container) */
+.phone-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1000px;
+}
+
+/* Phone Bezel/Mockup Shell Layout */
+.phone-device {
+  width: 380px;
+  height: 770px;
+  background: var(--bg-phone-bezel);
+  border-radius: 48px;
+  padding: 12px;
+  box-shadow:
+    0px 25px 50px -12px rgba(0, 0, 0, 0.7),
+    0px 0px 0px 4px rgba(255, 255, 255, 0.05) inset,
+    0px 0px 25px 2px rgba(168, 85, 247, 0.15);
+  position: relative;
+  transition: all 0.3s ease;
+  aspect-ratio: 9 / 19.5;
+}
+
+/* Side button details on simulated phone */
+.phone-device::before,
+.phone-device::after {
+  content: "";
+  position: absolute;
+  background: #2b2a3c;
+  border-radius: 3px;
+}
+
+/* Volume Buttons */
+.phone-device::before {
+  width: 4px;
+  height: 50px;
+  left: -4px;
+  top: 150px;
+  box-shadow: 0 60px 0 #2b2a3c;
+  /* Second volume button offset */
+}
+
+/* Power Button */
+.phone-device::after {
+  width: 4px;
+  height: 75px;
+  right: -4px;
+  top: 190px;
+}
+
+/* Simulated screen wrapper */
+.phone-screen {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-phone-screen);
+  border-radius: 38px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.8) inset;
+}
+
+/* Dynamic Island/Camera notch */
+.phone-notch {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 110px;
+  height: 28px;
+  background: #000;
+  border-radius: 20px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 14px;
+  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.phone-notch::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: #111e3b;
+  /* Subtle blue lens tint */
+  border-radius: 50%;
+}
+
+/* Phone top Status Bar */
+.phone-status-bar {
+  height: 48px;
+  padding: 0 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(15, 14, 23, 0.8);
+  backdrop-filter: blur(5px);
+  z-index: 90;
+  user-select: none;
+}
+
+.status-bar-icons {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.status-icon {
+  font-size: 0.8rem;
+}
+
+/* Phone Screen active chat header */
+.phone-header {
+  height: 60px;
+  background: rgba(20, 19, 30, 0.95);
+  border-bottom: 1px solid var(--border-translucent);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 80;
+}
+
+.header-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-outfit);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #fff;
+  box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+.header-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.contact-name {
+  font-family: var(--font-outfit);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-main);
+}
+
+.contact-status {
+  font-size: 0.72rem;
+  color: var(--color-success);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-typing {
+  color: var(--color-accent) !important;
+  font-style: italic;
+}
+
+/* Chat content body */
+.phone-chat-body {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background:
+    radial-gradient(circle at 100% 100%, rgba(168, 85, 247, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 0% 0%, rgba(6, 182, 212, 0.03) 0%, transparent 50%),
+    var(--bg-phone-screen);
+}
+
+/* Message Bubble Structures & Top-Down Growth */
+.message-row {
+  display: flex;
+  gap: 8px;
+  max-width: 85%;
+  align-self: flex-start;
+  align-items: flex-start; /* Anchors top of bubble to top edge so rounded top corners are fixed */
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.message-row.msg-expanding {
+  transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+}
+
+.message-player {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+  max-width: 80%;
+  padding-right: 8px; /* Leaves room for the right-facing speech tail inside overflow: hidden boundary */
+}
+
+.msg-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  align-self: flex-end; /* Always anchored to the expanding bottom edge */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.msg-bubble {
+  padding: 10px 14px;
+  border-radius: 18px;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  align-self: flex-start; /* Keeps top rounded corners anchored at top edge */
+  position: relative;
+}
+
+.message-contact .msg-bubble {
+  background: var(--bubble-contact);
+  color: var(--text-phone-contact);
+  border-bottom-left-radius: 0;
+}
+
+/* Contact speech bubble tail extending toward avatar */
+.message-contact .msg-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: -8px;
+  width: 8px;
+  height: 8px;
+  background: var(--bubble-contact);
+  clip-path: polygon(100% 0, 0 100%, 100% 100%);
+}
+
+.message-player .msg-bubble {
+  background: var(--bubble-player);
+  color: var(--text-phone-user);
+  border-bottom-right-radius: 0;
+}
+
+/* Player speech bubble tail extending toward player side */
+.message-player .msg-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  right: -8px;
+  width: 8px;
+  height: 8px;
+  background: #a855f7; /* Matches right side of gradient */
+  clip-path: polygon(0 0, 0 100%, 100% 100%);
+}
+
+.message-system {
+  max-width: 100%;
+  width: 100%;
+  align-self: center;
+  justify-content: center;
+}
+
+.message-system-inner {
+  background: var(--bubble-system);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-style: italic;
+  padding: 6px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-translucent);
+  text-align: center;
+}
+
+/* Typing bubble dots indicators */
+.typing-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  align-self: flex-end;
+}
+
+.typing-bubble {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 16px;
+  background: var(--bubble-contact);
+  border-radius: 18px;
+  border-bottom-left-radius: 4px;
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  animation: typing-bounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes typing-bounce {
+
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+  }
+
+  40% {
+    transform: scale(1.0);
+  }
+}
+
+.hidden {
+  display: none !important;
+}
+
+
+
+/* Choices styling (rendered inline in chat stream) */
+.choices-panel.inline-choices {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  width: 100%;
+  padding-top: 10px;
+  margin-top: auto;
+  align-self: flex-end;
+}
+
+.inline-choices .choice-btn {
+  background: rgba(168, 85, 247, 0.08);
+  border: 1.5px dashed rgba(168, 85, 247, 0.55);
+  color: var(--text-phone-user);
+  padding: 10px 14px;
+  border-radius: 18px;
+  border-bottom-right-radius: 4px;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  text-align: right;
+  max-width: 85%;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: all 0.2s ease;
+}
+
+.inline-choices .choice-btn:hover {
+  opacity: 1;
+  background: rgba(168, 85, 247, 0.25);
+  border-style: solid;
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+.inline-choices .choice-btn:active {
+  transform: scale(0.97);
+}
+
+/* Phone bottom virtual Home indicator gesture bar */
+.phone-home-indicator {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 19, 30, 0.95);
+  user-select: none;
+}
+
+.home-bar {
+  width: 120px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 3px;
+}
+
+/* Variables Debug widget inside editor panel */
+.vars-debugger-panel {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-translucent);
+  border-radius: var(--border-radius-md);
+  padding: 12px;
+  margin-top: auto;
+}
+
+.vars-debugger-header {
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.variables-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.variable-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-translucent);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  display: flex;
+  gap: 6px;
+}
+
+.var-name {
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.var-val {
+  color: #fff;
+  font-weight: 600;
+}
+
+.empty-vars {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* View Mode Navigation */
+.view-mode-nav {
+  display: flex;
+  background: rgba(10, 9, 18, 0.9);
+  border-bottom: 1px solid var(--border-translucent);
+  padding: 8px 16px;
+  gap: 12px;
+  z-index: 10;
+  justify-content: center;
+}
+
+.mode-tab {
+  width: 180px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-translucent);
+  color: var(--text-muted);
+  border-radius: var(--border-radius-sm);
+  padding: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.mode-tab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+}
+
+.mode-tab.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 10px var(--color-primary-glow);
+}
+
+/* Hide/Show Panels based on Active Mode */
+body[data-view-mode="edit"] #right-panel {
+  display: none !important;
+}
+
+body[data-view-mode="edit"] #left-panel {
+  display: grid !important;
+}
+
+body[data-view-mode="play"] #left-panel {
+  display: none !important;
+}
+
+body[data-view-mode="play"] #right-panel {
+  display: flex !important;
+}
+
+/* Update Workspace layout height for persistent mode-nav */
+.workspace {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  height: calc(100vh - 120px);
+  overflow: hidden;
+}
+
+/* RESPONSIVE MEDIA QUERIES */
+
+/* For wide screens with phone model frame */
+@media (min-width: 769px) {}
+
+/* Transition to clean full-screen layout on phone/tablet */
+@media (max-width: 768px) {
+  body {
+    overflow: auto;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+    height: calc(100vh - 65px);
+  }
+
+
+  /* Strip phone frame and fill screen fully */
+  .phone-panel {
+    padding: 0;
+    height: 100%;
+  }
+
+  .phone-device {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    max-height: 100% !important;
+    aspect-ratio: auto;
+  }
+
+  .phone-device::before,
+  .phone-device::after {
+    display: none;
+    /* Hide side physical buttons */
+  }
+
+  .phone-screen {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .phone-notch {
+    display: none;
+    /* Hide dynamic island notch */
+  }
+
+  .phone-status-bar {
+    height: 38px;
+    padding: 0 16px;
+    background: #000;
+  }
+
+  .editor-panel {
+    grid-template-columns: 1fr;
+    height: 100%;
+    padding: 10px;
+  }
+
+  .editor-sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border-translucent);
+    max-height: 250px;
+  }
+}
+
+/* Sidebar Choice Indented Items */
+.node-choice-sidebar-item {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-left: 1.5px dashed rgba(255, 255, 255, 0.08);
+  margin-left: 4px;
+  user-select: none;
+}
+
+.choice-sidebar-bullet {
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+.choice-sidebar-txt {
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: none;
+}
+
+.cond-header-label {
+  font-style: italic;
+  font-weight: 500;
+  color: rgba(6, 182, 212, 0.7);
+}
+
+.phone-back-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-primary);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: var(--border-radius-sm);
+  transition: background 0.2s;
+  position: relative;
+  margin-right: 4px;
+}
+
+.phone-back-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.unread-badge {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: bold;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Chat List Panel View */
+.phone-chat-list-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-phone-screen);
+  height: 100%;
+  animation: fade-in-list 0.25s ease;
+}
+
+@keyframes fade-in-list {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.chat-list-header {
+  padding: 16px 20px 8px 20px;
+}
+
+.chat-list-header h2 {
+  font-family: var(--font-outfit);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.chats-list-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 8px;
+}
+
+.chat-list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  transition: background 0.2s;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.chat-list-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.chat-item-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-outfit);
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.chat-item-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chat-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chat-item-name {
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: #fff;
+}
+
+.chat-item-time {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.chat-item-preview {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-list-item.unread .chat-item-preview {
+  color: #fff;
+  font-weight: 500;
+}
+
+.chat-list-item.unread .chat-item-name {
+  color: var(--color-accent);
+}
+
+.chat-item-badge-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-item-unread-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--color-accent);
+  border-radius: 50%;
+  box-shadow: 0 0 6px var(--color-accent-glow);
+}
+
+/* Chat Room View wrapper */
+.phone-chat-room-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Custom Modal Dialog Component */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+.modal-overlay.hidden {
+  display: none !important;
+}
+
+.modal-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-translucent);
+  border-radius: var(--border-radius-lg);
+  width: 90%;
+  max-width: 440px;
+  padding: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: modalScaleUp 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalScaleUp {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-family: var(--font-outfit);
+  color: var(--color-accent);
+  font-size: 1.2rem;
+}
+
+.btn-close-modal {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.2s ease;
+}
+
+.btn-close-modal:hover {
+  color: #ef4444;
+}
+
+.modal-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-translucent);
+  border-radius: var(--border-radius-sm);
+  color: var(--text-main);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.modal-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+    /* Ensure standalone app centers and fills screen correctly */
+    body {
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .workspace {
+      height: 100vh !important;
+      display: flex !important;
+      justify-content: center;
+      align-items: center;
+    }
+    #right-panel {
+      width: 100%;
+      height: 100%;
+      display: flex !important;
+    }
+  </style>
+</head>
+<body data-view-mode="play">
+
+  <main class="workspace">
+    <section id="right-panel" class="panel phone-panel">
+      <div class="phone-device">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          
+          <!-- Top simulated status clock & status battery/network bar -->
+          <header class="phone-status-bar">
+            <span id="status-time">8:00 PM</span>
+            <div class="status-bar-icons">
+              <!-- Network Signal Icon (SVG) -->
+              <svg class="status-icon" width="14" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M2 11.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm2-3a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5z"></path>
+              </svg>
+              <!-- Wifi Icon (SVG) -->
+              <svg class="status-icon" width="14" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M15.384 6.115a.485.485 0 0 0-.047-.736A12.444 12.444 0 0 0 8 3 12.44 12.44 0 0 0 .663 5.379a.485.485 0 0 0-.048.736.518.518 0 0 0 .668.05A11.448 11.448 0 0 1 8 4c2.507 0 4.827.802 6.716 2.164.205.148.49.13.668-.049z"></path>
+                <path d="M13.229 8.271a.482.482 0 0 0-.063-.745A9.455 9.455 0 0 0 8 6c-1.905 0-3.68.56-5.166 1.526a.48.48 0 0 0-.063.745.525.525 0 0 0 .652.065A8.46 8.46 0 0 1 8 7a8.46 8.46 0 0 1 4.577 1.336.525.525 0 0 0 .652-.065zm-2.183 2.183c.226-.226.185-.605-.1-.75A6.473 6.473 0 0 0 8 9c-1.187 0-2.302.318-3.272.875-.29.15-.33.529-.1.75l.178.178c.187.187.498.156.63-.075A5.467 5.467 0 0 1 8 10c1.026 0 1.986.282 2.808.775.132.23.443.262.63.075l.178-.178z"></path>
+              </svg>
+              <!-- Battery Icon (SVG) -->
+              <svg class="status-icon" width="16" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M2 6h10v4H2V6z"></path>
+                <path d="M2 4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H2zm10 1a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h10zm4 3a1.5 1.5 0 0 1-1.5 1.5v-3A1.5 1.5 0 0 1 16 8z"></path>
+              </svg>
+            </div>
+          </header>
+
+          <!-- Top active chat target header (Avatar + name + status) -->
+          <div id="phone-chat-header" class="phone-header">
+            <button id="btn-back-to-chats" class="phone-back-btn">
+              <span class="back-arrow">◀</span>
+              <span id="unread-total-badge" class="unread-badge hidden">1</span>
+            </button>
+            <div id="phone-contact-avatar" class="header-avatar" style="background-color: rgb(239, 68, 68);">?</div>
+            <div class="header-info">
+              <span id="phone-contact-name" class="contact-name">Unknown</span>
+              <span id="phone-contact-status" class="contact-status">Online</span>
+            </div>
+          </div>
+
+          <!-- Chat List View Panel (Conversations selector) -->
+          <div id="phone-chat-list-view" class="phone-chat-list-body hidden">
+            <div class="chat-list-header">
+              <h2>Messages</h2>
+            </div>
+            <div id="chats-list" class="chats-list-container"><div class="chat-list-item unread">
+        <div class="chat-item-avatar" style="background-color: #ef4444">?</div>
+        <div class="chat-item-content">
+          <div class="chat-item-top">
+            <span class="chat-item-name">Unknown</span>
+            <span class="chat-item-time">Now</span>
+          </div>
+          <span class="chat-item-preview">Open the door Sarah. If you don't open the front door, I will come through the sliding glass in the kitchen.</span>
+        </div>
+        <div class="chat-item-badge-wrap"><div class="chat-item-unread-dot"></div></div>
+      </div><div class="chat-list-item ">
+        <div class="chat-item-avatar" style="background-color: #3b82f6">MK</div>
+        <div class="chat-item-content">
+          <div class="chat-item-top">
+            <span class="chat-item-name">Mark (Friend)</span>
+            <span class="chat-item-time">Now</span>
+          </div>
+          <span class="chat-item-preview">Oh my god! I'm calling 911 right now. I'm getting in my car. Lock yourself in the bathroom, do not go to the door!</span>
+        </div>
+        
+      </div></div>
+          </div>
+
+          <!-- Chat Room View Panel (Individual message feed) -->
+          <div id="phone-chat-room-view" class="phone-chat-room-body">
+            <!-- Message bubbles scroll log window -->
+            <div id="chat-messages" class="phone-chat-body">
+              <!-- Messages added programmatically -->
+
+              <!-- Typing dots indicator wrapper -->
+              
+
+              <!-- Inline choice options buttons wrapper -->
+              
+            <div id="typing-indicator" class="message-row message-contact hidden" style="margin-bottom: 8px;">
+                <div class="typing-avatar" style="background-color: rgb(239, 68, 68);">?</div>
+                <div class="typing-bubble">
+                  <div class="typing-dot"></div>
+                  <div class="typing-dot"></div>
+                  <div class="typing-dot"></div>
+                </div>
+              </div><div id="msg_1785812052512_gs5gr" class="message-row message-contact" style="">
+        <div class="msg-avatar" style="background-color: #ef4444">?</div>
+        <div class="msg-bubble complete">
+          <div class="msg-body">Nice red curtains in your living room. You should close them. It's chilly outside.</div>
+        </div>
+      </div><div id="chat-choices" class="choices-panel inline-choices"><button class="choice-btn">Who is this? Stop messing around or I'm calling the police.</button><button class="choice-btn">Haha very funny Mark. I know it's you.</button></div></div>
+          </div>
+
+
+
+          <!-- Bottom physical home gesture swipe line -->
+          <div class="phone-home-indicator">
+            <div class="home-bar"></div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Embedded Story Data
+    const activeStory = {
+  "title": "Unknown Caller",
+  "description": "An unknown number sends a creepy video. Talk your way out of danger, and coordinate with your friend Mark.",
+  "variables": {
+    "panic": 0,
+    "copsCalled": 0
+  },
+  "characters": {
+    "stalker": {
+      "name": "Unknown",
+      "avatarColor": "#ef4444",
+      "avatarText": "?",
+      "isPlayer": false
+    },
+    "friend": {
+      "name": "Mark (Friend)",
+      "avatarColor": "#3b82f6",
+      "avatarText": "MK",
+      "isPlayer": false
+    },
+    "player": {
+      "name": "You",
+      "avatarColor": "#10b981",
+      "avatarText": "ME",
+      "isPlayer": true
+    }
+  },
+  "nodes": [
+    {
+      "sender": "stalker",
+      "text": "Nice red curtains in your living room. You should close them. It's chilly outside.",
+      "delay": 1500,
+      "choices": [
+        {
+          "text": "Who is this? Stop messing around or I'm calling the police.",
+          "actions": {
+            "panic": 1
+          },
+          "nodes": [
+            {
+              "sender": "stalker",
+              "text": "Go ahead. The local precinct has a 12-minute average response time tonight. I'm much closer than that. I'm right outside.",
+              "delay": 1500
+            }
+          ]
+        },
+        {
+          "text": "Haha very funny Mark. I know it's you.",
+          "nodes": [
+            {
+              "sender": "stalker",
+              "text": "I'm not Mark. But Mark is asleep in his apartment across town. I watched him go inside an hour ago. You, on the other hand, are still wide awake.",
+              "delay": 1800
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sender": "friend",
+      "text": "Hey Sarah, are you awake? A random local number just texted me asking if you were alone tonight. It freaked me out. Are you okay?",
+      "delay": 2000
+    },
+    {
+      "sender": "stalker",
+      "text": "Your golden retriever is sweet, but he's currently eating the steak I threw over the fence. And security cameras are useless when the power line is cut.",
+      "delay": 1800,
+      "choices": [
+        {
+          "text": "Please, please stop. Tell me what you want from me.",
+          "chat": "stalker",
+          "nodes": [
+            {
+              "sender": "stalker",
+              "text": "I want you to walk to the front door. Open it. The box contains the dashcam footage from three years ago on the lake road.",
+              "delay": 1500
+            }
+          ]
+        },
+        {
+          "text": "I'm armed. I will shoot if you step on my porch.",
+          "chat": "stalker",
+          "actions": {
+            "panic": 2
+          },
+          "nodes": [
+            {
+              "sender": "stalker",
+              "text": "You don't own a gun. You hate firearms. You wrote a blog post about it last year. Walk to the door.",
+              "delay": 1800
+            }
+          ]
+        },
+        {
+          "text": "[Text Mark] Mark, someone is at my house! Call the police immediately to my address!",
+          "chat": "friend",
+          "actions": {
+            "copsCalled": 1
+          },
+          "nodes": [
+            {
+              "sender": "friend",
+              "text": "Oh my god! I'm calling 911 right now. I'm getting in my car. Lock yourself in the bathroom, do not go to the door!",
+              "delay": 1500
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sender": "stalker",
+      "text": "Open the door Sarah. If you don't open the front door, I will come through the sliding glass in the kitchen.",
+      "delay": 1500,
+      "choices": [
+        {
+          "text": "[Open the front door slowly]",
+          "nodes": [
+            {
+              "sender": "stalker",
+              "text": "You opened it. There is nobody on the porch. Just a cardboard box with a tape inside, and a sticky note: 'I'm watching you. Next time, confess to the police.'",
+              "delay": 2000
+            },
+            {
+              "sender": "system",
+              "text": "[YOU SURVIVED the encounter, but the tape holds your secret. The mystery caller has vanished, leaving you with a final warning. THE END.]",
+              "delay": 1500
+            }
+          ]
+        },
+        {
+          "text": "[Lock yourself in the bathroom and hide]",
+          "nodes": [
+            {
+              "type": "conditional",
+              "variable": "copsCalled",
+              "operator": "==",
+              "value": 1,
+              "trueNodes": [
+                {
+                  "sender": "system",
+                  "text": "[RED AND BLUE LIGHTS FLASH THROUGH THE WINDOW. Police sirens wail. You hear officers shouting on the lawn. A figure shadows away into the forest. You are safe. For now.]",
+                  "delay": 2000
+                }
+              ],
+              "falseNodes": [
+                {
+                  "sender": "system",
+                  "text": "[THE LIGHTS GO OUT. You hear the sliding glass shatter in the kitchen. Heavy footsteps walk down the hall. A shadow enters the room. Connection Lost.]",
+                  "delay": 2000
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sender": "system",
+      "text": "[STORY ENDED]",
+      "delay": 1000,
+      "choices": [
+        {
+          "text": "[Play Again]",
+          "restart": true
+        }
+      ]
+    }
+  ]
+};
+    const defaultStories = { "active": activeStory };
+
+    // Stub StoryEditor for standalone coordinator run
+    class StoryEditor {
+      constructor() {
+        this.currentStory = activeStory;
+      }
+      init() {}
+    }
+
+    // Audio Controller Script
+    /**
+ * Audio Synthesizer for Phone Chat Game Engine (Disabled/Silent Mode)
+ * Stubbed out to remove sound functionality for the time being.
+ */
+
+class AudioController {
+  constructor() {
+    this.enabled = false;
+  }
+
+  init() {}
+  resume() {}
+  toggle(enabled) {}
+  playReceive() {}
+  playSend() {}
+  playTypeTick() {}
+  playVibrate() {}
+  playClick() {}
+}
+
+const audio = new AudioController();
+
+
+    // Game Engine Script
+    /**
+ * Multi-character Tree-based CYOA Dialogue Engine
+ * Groups message history by character, tracks unread counts, and resolves thread-filtered choices.
+ */
+
+class GameEngine {
+  constructor() {
+    this.story = null;
+    this.variables = {};
+    
+    // Stack of active execution contexts: [{ nodesList: Array, currentIndex: Number }]
+    this.stack = [];
+    this.conversations = {}; // Grouped: { characterId: Array<Message> }
+    this.unreadCounts = {};  // Tracking: { characterId: Number }
+    this.activeChoices = []; // Currently waiting choice options
+    this.activeChatId = null;// Currently opened conversation channel
+    this.isTyping = false;
+    this.typingTimeout = null;
+    this.delayTimeout = null;
+
+    this.callbacks = {
+      onMessageAdded: () => {}, // (msg, targetChatId)
+      onTypingStateChange: () => {},
+      onChoicesDisplay: () => {},
+      onStoryRestart: () => {},
+      onVariableUpdate: () => {}
+    };
+  }
+
+  on(event, callback) {
+    if (this.callbacks[event] !== undefined) {
+      this.callbacks[event] = callback;
+    }
+  }
+
+  loadStory(storyData) {
+    this.story = JSON.parse(JSON.stringify(storyData));
+    this.reset();
+  }
+
+  reset() {
+    if (this.typingTimeout) clearTimeout(this.typingTimeout);
+    if (this.delayTimeout) clearTimeout(this.delayTimeout);
+
+    this.variables = this.story.variables ? { ...this.story.variables } : {};
+    this.conversations = {};
+    this.unreadCounts = {};
+    this.activeChoices = [];
+    this.isTyping = false;
+    
+    // Choose default active chat (first contact)
+    const charKeys = Object.keys(this.story.characters);
+    this.activeChatId = charKeys.find(k => k !== "player") || charKeys[0] || "system";
+
+    // Initialize context stack with root story nodes
+    this.stack = [{
+      nodesList: this.story.nodes,
+      currentIndex: 0
+    }];
+
+    this.callbacks.onStoryRestart();
+    this.callbacks.onVariableUpdate(this.variables);
+
+    // Begin playback
+    this.playCurrentNode();
+  }
+
+  setActiveChat(chatId) {
+    this.activeChatId = chatId;
+    this.unreadCounts[chatId] = 0;
+  }
+
+  // Play the node at the top of the context stack
+  playCurrentNode() {
+    if (this.stack.length === 0) {
+      console.log("Dialogue tree fully completed.");
+      return;
+    }
+
+    const context = this.stack[this.stack.length - 1];
+    const index = context.currentIndex;
+    const list = context.nodesList;
+
+    if (!list || index >= list.length) {
+      // Reached the end of this sub-tree branch. Pop and return to parent level.
+      this.stack.pop();
+      if (this.stack.length > 0) {
+        const parentContext = this.stack[this.stack.length - 1];
+        parentContext.currentIndex += 1;
+        this.playCurrentNode();
+      } else {
+        console.log("End of main storyline tree.");
+      }
+      return;
+    }
+
+    const node = list[index];
+
+    // Check if the node is a conditional branch director
+    if (node.type === "conditional") {
+      this.evaluateConditionalNode(node);
+      return;
+    }
+
+    this.playNormalNode(node);
+  }
+
+  // Evaluates variables condition check and pushes result branch to context stack
+  evaluateConditionalNode(node) {
+    const varName = node.variable;
+    const currentVal = this.variables[varName] !== undefined ? this.variables[varName] : 0;
+    const checkVal = Number(node.value);
+
+    let isTrue = false;
+    switch (node.operator) {
+      case "==": isTrue = currentVal == checkVal; break;
+      case "!=": isTrue = currentVal != checkVal; break;
+      case ">": isTrue = currentVal > checkVal; break;
+      case ">=": isTrue = currentVal >= checkVal; break;
+      case "<": isTrue = currentVal < checkVal; break;
+      case "<=": isTrue = currentVal <= checkVal; break;
+    }
+
+    const nextBranch = isTrue ? (node.trueNodes || []) : (node.falseNodes || []);
+    
+    // Push conditional branch context onto stack
+    this.stack.push({
+      nodesList: nextBranch,
+      currentIndex: 0
+    });
+
+    this.playCurrentNode();
+  }
+
+  // Handles standard dialogue node typing and display delay
+  playNormalNode(node) {
+    this.isTyping = true;
+    const sender = this.story.characters[node.sender];
+    const isPlayer = sender ? sender.isPlayer : false;
+
+    this.callbacks.onTypingStateChange(true, node.sender);
+
+    const delay = node.delay !== undefined ? node.delay : 1000;
+
+    // Trigger haptic vibration before incoming non-player texts
+    if (!isPlayer && node.sender !== "system") {
+      this.delayTimeout = setTimeout(() => {
+        audio.playVibrate();
+      }, Math.max(0, delay - 400));
+    }
+
+    this.delayTimeout = setTimeout(() => {
+      this.typeMessage(node, isPlayer);
+    }, delay);
+  }
+
+  // Display message instantly
+  typeMessage(node, isPlayer) {
+    this.callbacks.onTypingStateChange(false, null);
+
+    const messageId = "msg_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
+    
+    // Route system messages to current active chat, others to the actual sender's chat
+    const targetChatId = node.sender === "system" ? this.activeChatId : node.sender;
+
+    if (!this.conversations[targetChatId]) {
+      this.conversations[targetChatId] = [];
+    }
+
+    const messageObj = {
+      id: messageId,
+      senderId: node.sender,
+      character: this.story.characters[node.sender] || { name: "System", avatarColor: "#6b7280", avatarText: "SYS", isPlayer: false },
+      text: node.text || "",
+      isComplete: true
+    };
+
+    this.conversations[targetChatId].push(messageObj);
+    this.isTyping = false;
+
+    // Increment unread count if it's arriving in a background channel
+    if (targetChatId !== this.activeChatId) {
+      if (this.unreadCounts[targetChatId] === undefined) {
+        this.unreadCounts[targetChatId] = 0;
+      }
+      this.unreadCounts[targetChatId] += 1;
+    }
+
+    // Call UI update, passing targetChatId
+    this.callbacks.onMessageAdded(messageObj, targetChatId);
+
+    if (isPlayer) {
+      audio.playSend();
+    } else {
+      audio.playReceive();
+    }
+
+    this.finishNodePlayback(node);
+  }
+
+  finishNodePlayback(node) {
+    // Apply immediate variable updates
+    if (node.actions) {
+      this.applyActions(node.actions);
+    }
+
+    if (node.choices && node.choices.length > 0) {
+      // Set active choices
+      this.activeChoices = node.choices;
+      // Notify UI to render choices
+      this.callbacks.onChoicesDisplay(this.activeChoices);
+    } else {
+      // Auto-advance: increment current index and proceed
+      const context = this.stack[this.stack.length - 1];
+      context.currentIndex += 1;
+
+      const autoDelay = node.autoAdvanceDelay !== undefined ? node.autoAdvanceDelay : 1000;
+      this.delayTimeout = setTimeout(() => {
+        this.playCurrentNode();
+      }, autoDelay);
+    }
+  }
+
+  applyActions(actions) {
+    for (const key in actions) {
+      const val = Number(actions[key]);
+      if (this.variables[key] === undefined) {
+        this.variables[key] = 0;
+      }
+      this.variables[key] += val;
+    }
+    this.callbacks.onVariableUpdate(this.variables);
+  }
+
+  // Process player clicking a choice
+  selectChoice(choice) {
+    if (this.isTyping) return;
+
+    // Determine target chat (either targeted choice.chat or current activeChatId)
+    const targetChatId = choice.chat || this.activeChatId;
+
+    if (!this.conversations[targetChatId]) {
+      this.conversations[targetChatId] = [];
+    }
+
+    // Display selection as user message
+    const userMsgObj = {
+      id: "choice_" + Date.now(),
+      senderId: "player",
+      character: this.story.characters["player"] || { name: "You", avatarColor: "#a855f7", avatarText: "ME", isPlayer: true },
+      text: choice.text,
+      isComplete: true
+    };
+
+    this.conversations[targetChatId].push(userMsgObj);
+    this.callbacks.onMessageAdded(userMsgObj, targetChatId);
+    audio.playSend();
+
+    // Clear active options
+    this.activeChoices = [];
+    this.callbacks.onChoicesDisplay([]);
+
+    if (choice.actions) {
+      this.applyActions(choice.actions);
+    }
+
+    if (choice.restart) {
+      this.delayTimeout = setTimeout(() => {
+        this.reset();
+      }, 800);
+      return;
+    }
+
+    this.delayTimeout = setTimeout(() => {
+      if (choice.nodes && choice.nodes.length > 0) {
+        // Push sub-nodes list onto context stack
+        this.stack.push({
+          nodesList: choice.nodes,
+          currentIndex: 0
+        });
+        this.playCurrentNode();
+      } else {
+        // Choice completes the parent branch. Advance past the parent node.
+        const context = this.stack[this.stack.length - 1];
+        context.currentIndex += 1;
+        this.playCurrentNode();
+      }
+    }, 800);
+  }
+
+  // Resolve a node reference from a path string (e.g. "0,choices,1,nodes,0")
+  getNodeByPath(pathStr) {
+    if (!pathStr) return null;
+    const parts = pathStr.split(",");
+    let current = this.story.nodes;
+
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i];
+      if (!isNaN(p)) {
+        const idx = parseInt(p);
+        if (Array.isArray(current)) {
+          if (i === parts.length - 1) {
+            return current[idx];
+          }
+          current = current[idx];
+        } else {
+          return null;
+        }
+      } else {
+        current = current[p];
+      }
+    }
+    return null;
+  }
+
+  // Advance playtest directly to a targeted tree path
+  advanceToPath(pathStr) {
+    if (!this.story) return;
+    if (this.typingTimeout) clearTimeout(this.typingTimeout);
+    if (this.delayTimeout) clearTimeout(this.delayTimeout);
+
+    this.conversations = {};
+    this.unreadCounts = {};
+    this.activeChoices = [];
+    this.isTyping = false;
+    this.callbacks.onStoryRestart();
+
+    // Rebuild context call stack to match the target path depth
+    this.stack = [];
+    const parts = pathStr.split(",");
+    let currentList = this.story.nodes;
+
+    let idx = 0;
+    while (idx < parts.length) {
+      const listIndex = parseInt(parts[idx]);
+      this.stack.push({
+        nodesList: currentList,
+        currentIndex: listIndex
+      });
+
+      if (idx + 1 < parts.length) {
+        const key = parts[idx + 1];
+        const currentNode = currentList[listIndex];
+
+        if (key === "choices") {
+          const choiceIdx = parseInt(parts[idx + 2]);
+          const choice = currentNode.choices[choiceIdx];
+          currentList = choice.nodes || [];
+          idx += 4; // Skip listIndex, "choices", choiceIndex, "nodes"
+        } else if (key === "trueNodes" || key === "falseNodes") {
+          currentList = currentNode[key] || [];
+          idx += 2; // Skip listIndex, key
+        } else {
+          break;
+        }
+      } else {
+        break;
+      }
+    }
+
+    // Set active chat from the node at the top of the stack
+    const targetNode = this.stack[this.stack.length - 1].nodesList[this.stack[this.stack.length - 1].currentIndex];
+    if (targetNode && targetNode.sender && targetNode.sender !== "system") {
+      this.activeChatId = targetNode.sender;
+    }
+
+    // Play the target node
+    this.playCurrentNode();
+  }
+}
+
+
+    // App Coordinator Script
+    /**
+ * Main application coordinator.
+ * Binds UI interactions, DOM updates, multi-chat navigation, and story editors.
+ */
+
+class AppCoordinator {
+  constructor() {
+    this.engine = new GameEngine();
+    this.editor = new StoryEditor(this.engine);
+    
+    // Load stories from localStorage, falling back to defaultStories
+    if (window.IS_STANDALONE) {
+      this.stories = typeof defaultStories !== "undefined" ? defaultStories : { "active": null };
+    } else {
+      const savedStories = localStorage.getItem('phone_stories');
+      if (savedStories) {
+        try {
+          this.stories = JSON.parse(savedStories);
+        } catch (e) {
+          console.error("Failed to parse saved stories from localStorage", e);
+          this.stories = JSON.parse(JSON.stringify(defaultStories));
+        }
+      } else {
+        this.stories = JSON.parse(JSON.stringify(defaultStories));
+      }
+    }
+
+    // DOM Elements
+    this.messagesContainer = null;
+    this.choicesContainer = null;
+    this.typingIndicator = null;
+    this.variablesTracker = null;
+    
+    // Multi-chat view divisions
+    this.chatHeaderView = null;
+    this.chatListView = null;
+    this.chatRoomView = null;
+    this.chatsListContainer = null;
+    
+    // Back navigation details
+    this.btnBackToChats = null;
+    this.unreadTotalBadge = null;
+
+    // Header details
+    this.contactNameEl = null;
+    this.contactStatusEl = null;
+    this.contactAvatarEl = null;
+
+    // Control buttons
+    this.btnRestart = null;
+    this.storySelect = null;
+
+    // Editor control items
+    this.btnNewStory = null;
+    this.btnNewNode = null;
+    this.btnExport = null;
+    this.btnImport = null;
+    this.fileInput = null;
+    this.btnExportBuild = null;
+
+    // View panels for mobile layout
+    this.viewModeSelector = null;
+    this.editorPanel = null;
+    this.phonePanel = null;
+  }
+
+  init() {
+    window.appCoordinator = this;
+    // Cache UI elements
+    this.messagesContainer = document.getElementById("chat-messages");
+    this.choicesContainer = document.getElementById("chat-choices");
+    this.typingIndicator = document.getElementById("typing-indicator");
+    this.variablesTracker = document.getElementById("variables-tracker");
+
+    this.chatHeaderView = document.getElementById("phone-chat-header");
+    this.chatListView = document.getElementById("phone-chat-list-view");
+    this.chatRoomView = document.getElementById("phone-chat-room-view");
+    this.chatsListContainer = document.getElementById("chats-list");
+
+    this.btnBackToChats = document.getElementById("btn-back-to-chats");
+    this.unreadTotalBadge = document.getElementById("unread-total-badge");
+
+    this.contactNameEl = document.getElementById("phone-contact-name");
+    this.contactStatusEl = document.getElementById("phone-contact-status");
+    this.contactAvatarEl = document.getElementById("phone-contact-avatar");
+
+    this.btnRestart = document.getElementById("btn-restart-game");
+    this.storySelect = document.getElementById("story-select");
+
+    this.btnNewStory = document.getElementById("btn-new-story");
+    this.btnNewNode = document.getElementById("btn-new-node");
+    this.btnExport = document.getElementById("btn-export-story");
+    this.btnImport = document.getElementById("btn-import-story");
+    this.btnExportBuild = document.getElementById("btn-export-build");
+    this.fileInput = document.getElementById("import-file-input");
+
+    this.editorPanel = document.getElementById("left-panel");
+    this.phonePanel = document.getElementById("right-panel");
+
+    // Populate story selector
+    this.populateStorySelector();
+
+    // Bind game engine callbacks
+    this.engine.on("onMessageAdded", (msg, targetChatId) => this.renderMessage(msg, targetChatId));
+    this.engine.on("onTypingStateChange", (isTyping, senderId) => this.updateTypingState(isTyping, senderId));
+    this.engine.on("onChoicesDisplay", (choices) => this.renderChoices(choices));
+    this.engine.on("onStoryRestart", () => this.clearChatHistory());
+    this.engine.on("onVariableUpdate", (vars) => this.renderVariablesDebug(vars));
+
+    // Initialize with default story
+    const initialStoryKey = Object.keys(this.stories)[0];
+    const initialStory = this.stories[initialStoryKey];
+    if (this.storySelect) this.storySelect.dataset.lastSelected = initialStoryKey;
+    
+    this.engine.loadStory(initialStory);
+    if (this.editor) this.editor.init(initialStory);
+    this.openChatRoom(this.engine.activeChatId);
+
+    // Attach control listeners
+    if (this.btnRestart) {
+      this.btnRestart.addEventListener("click", () => {
+        audio.playClick();
+        const currentMode = document.body.dataset.viewMode || "edit";
+        if (currentMode === "edit") {
+          const activeStory = (this.editor && this.editor.currentStory) || this.engine.story;
+          this.engine.loadStory(activeStory);
+          this.engine.reset();
+          this.switchViewMode("play");
+        } else {
+          this.switchViewMode("edit");
+        }
+      });
+    }
+
+    if (this.storySelect) {
+      this.storySelect.addEventListener("change", (e) => {
+        audio.playClick();
+        // Save current edits before switching
+        if (this.editor && this.editor.currentStory && this.storySelect.dataset.lastSelected) {
+          const lastKey = this.storySelect.dataset.lastSelected;
+          this.stories[lastKey] = this.editor.currentStory;
+          this.saveStoriesToLocalStorage(lastKey);
+        }
+        const storyKey = e.target.value;
+        this.storySelect.dataset.lastSelected = storyKey;
+        const selectedStory = this.stories[storyKey];
+        if (selectedStory) {
+          this.engine.loadStory(selectedStory);
+          if (this.editor) this.editor.init(selectedStory);
+          this.openChatRoom(this.engine.activeChatId);
+        }
+      });
+    }
+
+    if (this.btnNewStory) {
+      this.btnNewStory.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
+        audio.playClick();
+        this.openNewStoryModal();
+      });
+    }
+
+    // Modal elements
+    this.modalNewStory = document.getElementById("modal-new-story");
+    this.modalNewStoryInput = document.getElementById("new-story-title-input");
+    this.btnConfirmNewStory = document.getElementById("btn-confirm-new-story");
+    this.btnCancelNewStory = document.getElementById("btn-cancel-new-story");
+    this.btnCloseNewStory = document.getElementById("btn-close-new-story-modal");
+
+    if (this.btnConfirmNewStory) {
+      this.btnConfirmNewStory.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
+        this.confirmNewStoryFromModal();
+      });
+    }
+
+    if (this.btnCancelNewStory) {
+      this.btnCancelNewStory.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
+        this.closeNewStoryModal();
+      });
+    }
+
+    if (this.btnCloseNewStory) {
+      this.btnCloseNewStory.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
+        this.closeNewStoryModal();
+      });
+    }
+
+    if (this.modalNewStoryInput) {
+      this.modalNewStoryInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          this.confirmNewStoryFromModal();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          this.closeNewStoryModal();
+        }
+      });
+    }
+
+    // Back to conversations list action
+    if (this.btnBackToChats) {
+      this.btnBackToChats.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
+        audio.playClick();
+        this.showChatSelector();
+      });
+    }
+
+    // Editor click buttons
+    if (this.btnNewNode) {
+      this.btnNewNode.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
+        audio.playClick();
+        this.editor.createNewNode();
+      });
+    }
+
+    if (this.btnExport) {
+      this.btnExport.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
+        audio.playClick();
+        this.editor.exportJSON();
+      });
+    }
+
+    if (this.btnImport) {
+      this.btnImport.addEventListener("click", () => {
+        this.fileInput.click();
+      });
+    }
+
+    if (this.fileInput) {
+      this.fileInput.addEventListener("change", (e) => {
+        if (this.editor) {
+          this.editor.importJSON(e);
+          setTimeout(() => {
+            this.openChatRoom(this.engine.activeChatId);
+          }, 200);
+        }
+      });
+    }
+
+    if (this.btnExportBuild) {
+      this.btnExportBuild.addEventListener("click", () => {
+        audio.playClick();
+        this.exportBuild();
+      });
+    }
+
+    this.startStatusBarClock();
+    this.setupViewModeTabs();
+  }
+
+  saveStoriesToLocalStorage(targetKey) {
+    if (this.editor && this.editor.currentStory) {
+      const key = targetKey || (this.storySelect && this.storySelect.value);
+      if (key) {
+        this.stories[key] = this.editor.currentStory;
+      }
+    }
+    localStorage.setItem('phone_stories', JSON.stringify(this.stories));
+  }
+
+  populateStorySelector() {
+    if (!this.storySelect) return;
+    this.storySelect.innerHTML = "";
+    Object.keys(this.stories).forEach(key => {
+      const option = document.createElement("option");
+      option.value = key;
+      option.textContent = this.stories[key].title;
+      this.storySelect.appendChild(option);
+    });
+  }
+
+  openNewStoryModal() {
+    if (!this.modalNewStory) {
+      this.createNewStory("Untitled Story");
+      return;
+    }
+    if (this.modalNewStoryInput) {
+      this.modalNewStoryInput.value = "Untitled Story";
+    }
+    this.modalNewStory.classList.remove("hidden");
+    if (this.modalNewStoryInput) {
+      setTimeout(() => {
+        this.modalNewStoryInput.focus();
+        this.modalNewStoryInput.select();
+      }, 50);
+    }
+  }
+
+  closeNewStoryModal() {
+    if (this.modalNewStory) {
+      this.modalNewStory.classList.add("hidden");
+    }
+  }
+
+  confirmNewStoryFromModal() {
+    const title = (this.modalNewStoryInput && this.modalNewStoryInput.value.trim()) || "Untitled Story";
+    this.closeNewStoryModal();
+    this.createNewStory(title);
+  }
+
+  createNewStory(customTitle) {
+    const title = customTitle || "Untitled Story";
+
+    // Save current story edits first
+    if (this.editor && this.editor.currentStory && this.storySelect && this.storySelect.value) {
+      this.stories[this.storySelect.value] = this.editor.currentStory;
+      this.saveStoriesToLocalStorage(this.storySelect.value);
+    }
+
+    const storyId = "custom_story_" + Date.now();
+    const newStory = {
+      title: title,
+      description: "Describe your branching story here.",
+      variables: {},
+      characters: {
+        player: {
+          name: "Player",
+          avatarColor: "#8b5cf6",
+          avatarText: "PL",
+          isPlayer: true
+        }
+      },
+      nodes: [
+        {
+          sender: "player",
+          text: "Start your dialogue here.",
+          delay: 1000,
+          choices: []
+        }
+      ]
+    };
+
+    this.stories[storyId] = newStory;
+    this.populateStorySelector();
+    if (this.storySelect) {
+      this.storySelect.value = storyId;
+      this.storySelect.dataset.lastSelected = storyId;
+    }
+
+    this.engine.loadStory(newStory);
+    if (this.editor) this.editor.init(newStory);
+    this.openChatRoom(this.engine.activeChatId);
+
+    // Save new story to localStorage
+    this.saveStoriesToLocalStorage(storyId);
+  }
+
+  // Opens conversations list index view
+  showChatSelector() {
+    this.chatHeaderView.classList.add("hidden");
+    this.chatRoomView.classList.add("hidden");
+    this.chatListView.classList.remove("hidden");
+    
+    this.renderChatList();
+  }
+
+  // Opens individual chat room thread view
+  openChatRoom(charId) {
+    this.engine.setActiveChat(charId);
+
+    this.chatListView.classList.add("hidden");
+    this.chatHeaderView.classList.remove("hidden");
+    this.chatRoomView.classList.remove("hidden");
+
+    this.updatePhoneHeader();
+    this.updateBackUnreadBadge();
+
+    // Clear feed (except tracking indicator elements)
+    const children = Array.from(this.messagesContainer.children);
+    children.forEach(child => {
+      if (child !== this.typingIndicator && child !== this.choicesContainer) {
+        child.remove();
+      }
+    });
+
+    // Render historical logs for the target chat
+    const logs = this.engine.conversations[charId] || [];
+    logs.forEach(msg => {
+      this.drawMessageBubble(msg);
+    });
+
+    // Display inline choices filtered for this chat room channel
+    this.renderChoices(this.engine.activeChoices);
+    this.scrollToBottom();
+  }
+
+  // Populate phone screen header details
+  updatePhoneHeader() {
+    if (!this.engine.story || !this.engine.activeChatId) return;
+
+    const contact = this.engine.story.characters[this.engine.activeChatId];
+    if (contact) {
+      this.contactNameEl.textContent = contact.name;
+      this.contactAvatarEl.textContent = contact.avatarText || "?";
+      this.contactAvatarEl.style.backgroundColor = contact.avatarColor || "#6b7280";
+      this.contactStatusEl.textContent = this.engine.isTyping ? "Typing..." : "Online";
+    }
+  }
+
+  // Renders the chat list items recursively
+  renderChatList() {
+    this.chatsListContainer.innerHTML = "";
+    if (!this.engine.story) return;
+
+    const characters = this.engine.story.characters;
+    const charKeys = Object.keys(characters).filter(k => k !== "player");
+
+    charKeys.forEach(charId => {
+      const char = characters[charId];
+      const logs = this.engine.conversations[charId] || [];
+      const unreadCount = this.engine.unreadCounts[charId] || 0;
+      const isUnread = unreadCount > 0;
+
+      const item = document.createElement("div");
+      item.className = `chat-list-item ${isUnread ? 'unread' : ''}`;
+
+      let lastMsgText = "No messages yet";
+      if (logs.length > 0) {
+        const lastMsg = logs[logs.length - 1];
+        lastMsgText = lastMsg.senderId === "player" ? `You: ${lastMsg.text}` : lastMsg.text;
+      } else if (this.engine.activeChoices && this.engine.activeChoices.length > 0) {
+        // Evaluate if this background contact is waiting for an active response
+        const hasChoiceInThread = this.engine.activeChoices.some(ch => {
+          const target = ch.chat || this.getActiveNodeSender();
+          return target === charId;
+        });
+        if (hasChoiceInThread) {
+          lastMsgText = "Response waiting...";
+        }
+      }
+
+      const avatarHtml = `<div class="chat-item-avatar" style="background-color: ${char.avatarColor}">${char.avatarText}</div>`;
+      const badgeHtml = isUnread 
+        ? `<div class="chat-item-badge-wrap"><div class="chat-item-unread-dot"></div></div>`
+        : ``;
+
+      item.innerHTML = `
+        ${avatarHtml}
+        <div class="chat-item-content">
+          <div class="chat-item-top">
+            <span class="chat-item-name">${char.name}</span>
+            <span class="chat-item-time">Now</span>
+          </div>
+          <span class="chat-item-preview">${lastMsgText}</span>
+        </div>
+        ${badgeHtml}
+      `;
+
+      item.addEventListener("click", () => {
+        this.openChatRoom(charId);
+      });
+
+      this.chatsListContainer.appendChild(item);
+    });
+  }
+
+  // Helper to determine the sender of the active story stack node
+  getActiveNodeSender() {
+    if (this.engine.stack.length > 0) {
+      const frame = this.engine.stack[this.engine.stack.length - 1];
+      const node = frame.nodesList[frame.currentIndex];
+      return node ? node.sender : "";
+    }
+    return "";
+  }
+
+  // Reactive message interceptor
+  renderMessage(msg, targetChatId) {
+    // Refresh conversation previews if looking at selector index
+    if (!this.chatListView.classList.contains("hidden")) {
+      this.renderChatList();
+    }
+
+    this.updateBackUnreadBadge();
+
+    // Do not draw message bubble if it arrived in a background chat channel
+    if (targetChatId !== this.engine.activeChatId) {
+      return;
+    }
+
+    this.drawMessageBubble(msg);
+  }
+
+  // Draws message bubble inside chat body
+  drawMessageBubble(msg) {
+    let msgEl = document.getElementById(msg.id);
+    const isNew = !msgEl;
+
+    if (isNew) {
+      msgEl = document.createElement("div");
+      msgEl.id = msg.id;
+      this.messagesContainer.appendChild(msgEl);
+    }
+
+    const senderKey = msg.senderId;
+    const isPlayer = msg.character.isPlayer;
+
+    if (senderKey === "system") {
+      msgEl.className = "message-row message-system";
+      msgEl.innerHTML = `<div class="message-system-inner">${msg.text}</div>`;
+    } else {
+      msgEl.className = `message-row ${isPlayer ? 'message-player' : 'message-contact'}`;
+      
+      const avatarHtml = isPlayer 
+        ? '' 
+        : `<div class="msg-avatar" style="background-color: ${msg.character.avatarColor}">${msg.character.avatarText}</div>`;
+
+      msgEl.innerHTML = `
+        ${avatarHtml}
+        <div class="msg-bubble complete">
+          <div class="msg-body">${msg.text}</div>
+        </div>
+      `;
+
+      if (isNew) {
+        // 1. Measure natural height at full layout width
+        const naturalHeight = msgEl.getBoundingClientRect().height;
+
+        // 2. Set initial collapsed state before enabling transition
+        msgEl.style.maxHeight = "0px";
+        msgEl.style.opacity = "0";
+
+        // 3. Queue animation on next paint frame so browser commits the 0px start frame
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            msgEl.classList.add("msg-expanding");
+            msgEl.style.maxHeight = naturalHeight + "px";
+            msgEl.style.opacity = "1";
+          });
+        });
+
+        setTimeout(() => {
+          msgEl.classList.remove("msg-expanding");
+          msgEl.style.maxHeight = "";
+          msgEl.style.opacity = "";
+        }, 400);
+      }
+    }
+
+    this.scrollToBottom();
+  }
+
+  // Show/Hide three bouncing typing dots
+  updateTypingState(isTyping, senderId) {
+    // Suppress typing indicator if it belongs to a background thread
+    if (isTyping && senderId !== "system" && senderId !== this.engine.activeChatId) {
+      return;
+    }
+
+    if (isTyping && senderId !== "system") {
+      const char = this.engine.story.characters[senderId] || { name: "Character", avatarColor: "#6b7280", avatarText: "C" };
+      
+      this.typingIndicator.querySelector(".typing-avatar").style.backgroundColor = char.avatarColor;
+      this.typingIndicator.querySelector(".typing-avatar").textContent = char.avatarText;
+      
+      this.messagesContainer.appendChild(this.typingIndicator);
+      this.typingIndicator.classList.remove("hidden");
+      this.scrollToBottom();
+
+      this.contactStatusEl.textContent = "Typing...";
+      this.contactStatusEl.classList.add("status-typing");
+    } else {
+      this.typingIndicator.classList.add("hidden");
+      this.contactStatusEl.textContent = "Online";
+      this.contactStatusEl.classList.remove("status-typing");
+    }
+  }
+
+  // Renders active choices filtered for the current chat room channel
+  renderChoices(choices) {
+    this.choicesContainer.innerHTML = "";
+
+    if (!choices || choices.length === 0) {
+      this.choicesContainer.classList.add("hidden");
+      return;
+    }
+
+    const nodeSender = this.getActiveNodeSender();
+    
+    // Filter choices where targeted chat matches activeChatId
+    const filtered = choices.filter(ch => {
+      const target = ch.chat || nodeSender;
+      return target === this.engine.activeChatId;
+    });
+
+    if (filtered.length === 0) {
+      this.choicesContainer.classList.add("hidden");
+      return;
+    }
+
+    this.messagesContainer.appendChild(this.choicesContainer);
+    this.choicesContainer.classList.remove("hidden");
+
+    filtered.forEach(ch => {
+      const btn = document.createElement("button");
+      btn.className = "choice-btn";
+      btn.innerHTML = `${ch.text}`;
+      btn.addEventListener("click", () => {
+        this.engine.selectChoice(ch);
+      });
+      this.choicesContainer.appendChild(btn);
+    });
+
+    this.scrollToBottom();
+  }
+
+  // Update back arrow button unread messages counter
+  updateBackUnreadBadge() {
+    const unreadCounts = this.engine.unreadCounts;
+    let total = 0;
+    
+    Object.keys(unreadCounts).forEach(key => {
+      if (key !== this.engine.activeChatId) {
+        total += unreadCounts[key];
+      }
+    });
+
+    if (total > 0) {
+      this.unreadTotalBadge.textContent = total;
+      this.unreadTotalBadge.classList.remove("hidden");
+    } else {
+      this.unreadTotalBadge.classList.add("hidden");
+    }
+  }
+
+  // Reset dialogue feed
+  clearChatHistory() {
+    this.chatListView.classList.add("hidden");
+    this.chatHeaderView.classList.remove("hidden");
+    this.chatRoomView.classList.remove("hidden");
+
+    const children = Array.from(this.messagesContainer.children);
+    children.forEach(child => {
+      if (child !== this.typingIndicator && child !== this.choicesContainer) {
+        child.remove();
+      }
+    });
+    
+    this.typingIndicator.classList.add("hidden");
+    this.choicesContainer.innerHTML = "";
+    this.choicesContainer.classList.add("hidden");
+
+    this.updatePhoneHeader();
+    this.updateBackUnreadBadge();
+  }
+
+  renderVariablesDebug(variables) {
+    if (!this.variablesTracker) return;
+    this.variablesTracker.innerHTML = "";
+
+    const keys = Object.keys(variables);
+    if (keys.length === 0) {
+      this.variablesTracker.innerHTML = `<span class="empty-vars">No game state variables defined.</span>`;
+      return;
+    }
+
+    keys.forEach(key => {
+      const chip = document.createElement("div");
+      chip.className = "variable-chip";
+      chip.innerHTML = `
+        <span class="var-name">${key}</span>
+        <span class="var-val">${variables[key]}</span>
+      `;
+      this.variablesTracker.appendChild(chip);
+    });
+  }
+
+  scrollToBottom() {
+    this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+  }
+
+  startStatusBarClock() {
+    const clockEl = document.getElementById("status-time");
+    if (!clockEl) return;
+
+    const updateTime = () => {
+      const now = new Date();
+      let hours = now.getHours();
+      const minutes = String(now.getMinutes()).padStart(2, "0");
+      const ampm = hours >= 12 ? "PM" : "AM";
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      clockEl.textContent = `${hours}:${minutes} ${ampm}`;
+    };
+
+    updateTime();
+    setInterval(updateTime, 30000);
+  }
+
+  setupViewModeTabs() {
+    document.body.dataset.viewMode = "edit";
+  }
+
+  switchViewMode(mode) {
+    document.body.dataset.viewMode = mode;
+    if (this.btnRestart) {
+      if (mode === "play") {
+        this.btnRestart.innerHTML = `<span class="icon">📝</span> Edit Draft`;
+      } else {
+        this.btnRestart.innerHTML = `<span class="icon">🔄</span> Playtest Draft`;
+      }
+    }
+  }
+
+  }
+
+window.addEventListener('DOMContentLoaded', () => {
+  const app = new AppCoordinator();
+  app.init();
+});
+  </script>
+</body>
+</html>
