@@ -367,25 +367,14 @@ export class StoryEditor {
 
           bodyDiv.appendChild(textRow);
 
-          const choicesHead = document.createElement("div");
-          choicesHead.className = "choices-head-row";
-          choicesHead.innerHTML = `
-            <span class="choices-title">Player Branching Choices</span>
-          `;
-          const btnAddChoiceOpt = document.createElement("button");
-          btnAddChoiceOpt.type = "button";
-          btnAddChoiceOpt.className = "btn btn-secondary btn-xs";
-          btnAddChoiceOpt.innerHTML = "+ Option";
-          btnAddChoiceOpt.addEventListener("click", (e) => {
-            e.stopPropagation();
-            if (!node.choices) node.choices = [];
-            node.choices.push({ text: "New Option", nodes: [] });
-            this.renderNodeList();
-            this.engine.loadStory(this.currentStory);
-            this.triggerLocalStorageSave();
-          });
-          choicesHead.appendChild(btnAddChoiceOpt);
-          bodyDiv.appendChild(choicesHead);
+          if (node.choices && node.choices.length > 0) {
+            const choicesHead = document.createElement("div");
+            choicesHead.className = "choices-head-row";
+            choicesHead.innerHTML = `
+              <span class="choices-title">Player Branching Choices</span>
+            `;
+            bodyDiv.appendChild(choicesHead);
+          }
         }
 
         nodeDiv.appendChild(bodyDiv);
@@ -414,6 +403,23 @@ export class StoryEditor {
 
         footerDiv.appendChild(btnAddChildNode);
         footerDiv.appendChild(btnInsertNodeBelow);
+
+        if (node.type !== "conditional") {
+          const btnAddChoiceOpt = document.createElement("button");
+          btnAddChoiceOpt.type = "button";
+          btnAddChoiceOpt.className = "btn-node-add-action btn-node-add-option";
+          btnAddChoiceOpt.innerHTML = "+ Option";
+          btnAddChoiceOpt.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (!node.choices) node.choices = [];
+            node.choices.push({ text: "New Option", nodes: [] });
+            this.renderNodeList();
+            this.engine.loadStory(this.currentStory);
+            this.triggerLocalStorageSave();
+          });
+          footerDiv.appendChild(btnAddChoiceOpt);
+        }
+
         nodeDiv.appendChild(footerDiv);
 
         this.nodeListContainer.appendChild(nodeDiv);
