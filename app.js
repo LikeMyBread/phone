@@ -75,7 +75,6 @@ class AppCoordinator {
     this.messagesContainer = document.getElementById("chat-messages");
     this.choicesContainer = document.getElementById("chat-choices");
     this.typingIndicator = document.getElementById("typing-indicator");
-    this.variablesTracker = document.getElementById("variables-tracker");
 
     this.chatHeaderView = document.getElementById("phone-chat-header");
     this.chatListView = document.getElementById("phone-chat-list-view");
@@ -110,7 +109,6 @@ class AppCoordinator {
     this.engine.on("onTypingStateChange", (isTyping, senderId) => this.updateTypingState(isTyping, senderId));
     this.engine.on("onChoicesDisplay", (choices) => this.renderChoices(choices));
     this.engine.on("onStoryRestart", () => this.clearChatHistory());
-    this.engine.on("onVariableUpdate", (vars) => this.renderVariablesDebug(vars));
 
     // Initialize with default story
     const initialStoryKey = Object.keys(this.stories)[0];
@@ -662,27 +660,6 @@ class AppCoordinator {
 
     this.updatePhoneHeader();
     this.updateBackUnreadBadge();
-  }
-
-  renderVariablesDebug(variables) {
-    if (!this.variablesTracker) return;
-    this.variablesTracker.innerHTML = "";
-
-    const keys = Object.keys(variables);
-    if (keys.length === 0) {
-      this.variablesTracker.innerHTML = `<span class="empty-vars">No game state variables defined.</span>`;
-      return;
-    }
-
-    keys.forEach(key => {
-      const chip = document.createElement("div");
-      chip.className = "variable-chip";
-      chip.innerHTML = `
-        <span class="var-name">${key}</span>
-        <span class="var-val">${variables[key]}</span>
-      `;
-      this.variablesTracker.appendChild(chip);
-    });
   }
 
   scrollToBottom() {
