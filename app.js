@@ -360,12 +360,13 @@ class AppCoordinator {
     this.chatRoomView.classList.add("hidden");
     this.chatListView.classList.remove("hidden");
     
+    this.engine.setChatRoomOpen(false);
     this.renderChatList();
   }
 
   // Opens individual chat room thread view
   openChatRoom(charId) {
-    this.engine.setActiveChat(charId);
+    this.engine.setActiveChat(charId, true);
 
     this.chatListView.classList.add("hidden");
     this.chatHeaderView.classList.remove("hidden");

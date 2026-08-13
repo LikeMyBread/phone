@@ -16,6 +16,8 @@ export class GameEngine {
     this.unreadCounts = {};  // Tracking: { characterId: Number }
     this.activeChoices = []; // Currently waiting choice options
     this.activeChatId = null;// Currently opened conversation channel
+    this.isChatRoomOpen = true; // Tracks whether player is in chat room thread vs selector list
+    this.waitingForMessage = null; // Tracks pending progression waiting for message to be opened
     this.isTyping = false;
     this.typingTimeout = null;
     this.delayTimeout = null;
@@ -48,6 +50,8 @@ export class GameEngine {
     this.conversations = {};
     this.unreadCounts = {};
     this.activeChoices = [];
+    this.waitingForMessage = null;
+    this.isChatRoomOpen = true;
     this.isTyping = false;
     
     // Choose default active chat (first visible contact)
@@ -68,9 +72,29 @@ export class GameEngine {
     this.playCurrentNode();
   }
 
-  setActiveChat(chatId) {
+  setActiveChat(chatId, isRoomOpen = true) {
     this.activeChatId = chatId;
+    this.isChatRoomOpen = isRoomOpen;
     this.unreadCounts[chatId] = 0;
+
+    if (this.conversations[chatId]) {
+      this.conversations[chatId].forEach(msg => {
+        msg.isOpened = true;
+      });
+    }
+
+    if (this.waitingForMessage && this.waitingForMessage.messageObj.isOpened) {
+      const { node } = this.waitingForMessage;
+      this.waitingForMessage = null;
+      this.proceedAfterNode(node);
+    }
+  }
+
+  setChatRoomOpen(isOpen) {
+    this.isChatRoomOpen = isOpen;
+    if (isOpen && this.activeChatId) {
+      this.setActiveChat(this.activeChatId, true);
+    }
   }
 
   // Play the node at the top of the context stack
@@ -170,12 +194,15 @@ export class GameEngine {
       this.conversations[targetChatId] = [];
     }
 
+    const isCurrentlyViewed = this.isChatRoomOpen && (targetChatId === this.activeChatId);
+
     const messageObj = {
       id: messageId,
       senderId: node.sender,
       character: this.story.characters[node.sender] || { name: "System", avatarColor: "#6b7280", avatarText: "SYS", isPlayer: false },
       text: node.text || "",
-      isComplete: true
+      isComplete: true,
+      isOpened: isPlayer || isCurrentlyViewed
     };
 
     this.conversations[targetChatId].push(messageObj);
@@ -198,15 +225,23 @@ export class GameEngine {
       audio.playReceive();
     }
 
-    this.finishNodePlayback(node);
+    this.finishNodePlayback(node, messageObj);
   }
 
-  finishNodePlayback(node) {
+  finishNodePlayback(node, messageObj) {
     // Apply immediate variable updates
     if (node.actions) {
       this.applyActions(node.actions);
     }
 
+    if (!messageObj || messageObj.isOpened) {
+      this.proceedAfterNode(node);
+    } else {
+      this.waitingForMessage = { node, messageObj };
+    }
+  }
+
+  proceedAfterNode(node) {
     if (node.choices && node.choices.length > 0) {
       // Set active choices
       this.activeChoices = node.choices;
@@ -215,12 +250,14 @@ export class GameEngine {
     } else {
       // Auto-advance: increment current index and proceed
       const context = this.stack[this.stack.length - 1];
-      context.currentIndex += 1;
+      if (context) {
+        context.currentIndex += 1;
 
-      const autoDelay = node.autoAdvanceDelay !== undefined ? node.autoAdvanceDelay : 1000;
-      this.delayTimeout = setTimeout(() => {
-        this.playCurrentNode();
-      }, autoDelay);
+        const autoDelay = node.autoAdvanceDelay !== undefined ? node.autoAdvanceDelay : 1000;
+        this.delayTimeout = setTimeout(() => {
+          this.playCurrentNode();
+        }, autoDelay);
+      }
     }
   }
 
@@ -325,6 +362,8 @@ export class GameEngine {
     this.conversations = {};
     this.unreadCounts = {};
     this.activeChoices = [];
+    this.waitingForMessage = null;
+    this.isChatRoomOpen = true;
     this.isTyping = false;
     this.callbacks.onStoryRestart();
 
