@@ -795,7 +795,8 @@ textarea:focus {
   text-align: center;
 }
 
-.player-checkbox {
+.player-checkbox,
+.visible-checkbox {
   font-size: 0.8rem;
   color: var(--text-muted);
   display: flex;

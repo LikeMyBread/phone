@@ -50,9 +50,10 @@ export class GameEngine {
     this.activeChoices = [];
     this.isTyping = false;
     
-    // Choose default active chat (first contact)
+    // Choose default active chat (first visible contact)
     const charKeys = Object.keys(this.story.characters);
-    this.activeChatId = charKeys.find(k => k !== "player") || charKeys[0] || "system";
+    const visibleChars = charKeys.filter(k => k !== "player" && this.story.characters[k].visibleByDefault !== false);
+    this.activeChatId = visibleChars[0] || charKeys.find(k => k !== "player") || charKeys[0] || "system";
 
     // Initialize context stack with root story nodes
     this.stack = [{

@@ -416,7 +416,16 @@ class AppCoordinator {
     const characters = this.engine.story.characters;
     const charKeys = Object.keys(characters).filter(k => k !== "player");
 
-    charKeys.forEach(charId => {
+    const visibleCharKeys = charKeys.filter(charId => {
+      const char = characters[charId];
+      if (char && char.visibleByDefault !== false) {
+        return true;
+      }
+      const logs = this.engine.conversations[charId] || [];
+      return logs.some(m => m.senderId === charId);
+    });
+
+    visibleCharKeys.forEach(charId => {
       const char = characters[charId];
       const logs = this.engine.conversations[charId] || [];
       const unreadCount = this.engine.unreadCounts[charId] || 0;

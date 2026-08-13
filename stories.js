@@ -17,19 +17,22 @@ export const defaultStories = {
         "name": "Lt. Carver",
         "avatarColor": "#06b6d4",
         "avatarText": "LC",
-        "isPlayer": false
+        "isPlayer": false,
+        "visibleByDefault": true
       },
       "scientist": {
         "name": "Dr. Aris (HQ)",
         "avatarColor": "#10b981",
         "avatarText": "DA",
-        "isPlayer": false
+        "isPlayer": false,
+        "visibleByDefault": true
       },
       "player": {
         "name": "Mission Control (You)",
         "avatarColor": "#8b5cf6",
         "avatarText": "MC",
-        "isPlayer": true
+        "isPlayer": true,
+        "visibleByDefault": true
       }
     },
     "nodes": [
@@ -218,19 +221,22 @@ export const defaultStories = {
         "name": "Unknown",
         "avatarColor": "#ef4444",
         "avatarText": "?",
-        "isPlayer": false
+        "isPlayer": false,
+        "visibleByDefault": true
       },
       "friend": {
         "name": "Mark (Friend)",
         "avatarColor": "#3b82f6",
         "avatarText": "MK",
-        "isPlayer": false
+        "isPlayer": false,
+        "visibleByDefault": false
       },
       "player": {
         "name": "You",
         "avatarColor": "#10b981",
         "avatarText": "ME",
-        "isPlayer": true
+        "isPlayer": true,
+        "visibleByDefault": true
       }
     },
     "nodes": [
@@ -380,19 +386,22 @@ export const defaultStories = {
         "name": "Chloe (Bestie)",
         "avatarColor": "#ec4899",
         "avatarText": "CH",
-        "isPlayer": false
+        "isPlayer": false,
+        "visibleByDefault": true
       },
       "dan": {
         "name": "Dan (Crush)",
         "avatarColor": "#eab308",
         "avatarText": "DN",
-        "isPlayer": false
+        "isPlayer": false,
+        "visibleByDefault": true
       },
       "player": {
         "name": "You",
         "avatarColor": "#a855f7",
         "avatarText": "ME",
-        "isPlayer": true
+        "isPlayer": true,
+        "visibleByDefault": true
       }
     },
     "nodes": [

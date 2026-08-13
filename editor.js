@@ -970,13 +970,15 @@ export class StoryEditor {
       const color = row.querySelector(".char-color-input").value;
       const avatar = row.querySelector(".char-avatar-input").value.trim();
       const isPlayer = row.querySelector(".char-player-check").checked;
+      const visibleByDefault = row.querySelector(".char-visible-check").checked;
 
       if (newId) {
         updatedCharacters[newId] = {
           name: name,
           avatarColor: color,
           avatarText: avatar,
-          isPlayer: isPlayer
+          isPlayer: isPlayer,
+          visibleByDefault: visibleByDefault
         };
 
         if (oldId && oldId !== newId) {
@@ -1035,6 +1037,7 @@ export class StoryEditor {
     const chars = this.currentStory.characters || {};
     Object.keys(chars).forEach(key => {
       const char = chars[key];
+      const isVisible = char.visibleByDefault !== false;
       const row = document.createElement("div");
       row.className = "char-config-row";
       row.dataset.oldId = key;
@@ -1048,6 +1051,9 @@ export class StoryEditor {
           <input type="text" class="char-avatar-input" placeholder="Avatar" value="${char.avatarText || 'A'}">
           <label class="player-checkbox">
             <input type="checkbox" class="char-player-check" ${char.isPlayer ? 'checked' : ''}> Is Player
+          </label>
+          <label class="visible-checkbox">
+            <input type="checkbox" class="char-visible-check" ${isVisible ? 'checked' : ''}> Visible Default
           </label>
           <button type="button" class="btn btn-danger btn-xs btn-del-char">✖</button>
         </div>
@@ -1089,7 +1095,8 @@ export class StoryEditor {
           name: "New Character",
           avatarColor: "#3b82f6",
           avatarText: "NC",
-          isPlayer: false
+          isPlayer: false,
+          visibleByDefault: true
         };
 
         this.renderCharactersList();
