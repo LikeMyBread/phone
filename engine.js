@@ -22,13 +22,91 @@ export class GameEngine {
     this.typingTimeout = null;
     this.delayTimeout = null;
 
+    // Manual in-game clock state
+    this.clockObj = null;
+    this.currentClock = null;
+
     this.callbacks = {
       onMessageAdded: () => {}, // (msg, targetChatId)
       onTypingStateChange: () => {},
       onChoicesDisplay: () => {},
       onStoryRestart: () => {},
-      onVariableUpdate: () => {}
+      onVariableUpdate: () => {},
+      onClockUpdate: () => {}
     };
+  }
+
+  parseTime(timeStr) {
+    if (!timeStr || typeof timeStr !== "string") return null;
+    const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?$/);
+    if (!match) return null;
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+    let ampm = match[3] ? match[3].toUpperCase() : null;
+    if (!ampm) {
+      ampm = hours >= 12 ? "PM" : "AM";
+      hours = hours % 12 || 12;
+    }
+    return { hours, minutes, ampm };
+  }
+
+  formatTime(timeObj) {
+    if (!timeObj) return "";
+    const mins = String(timeObj.minutes).padStart(2, "0");
+    return `${timeObj.hours}:${mins} ${timeObj.ampm}`;
+  }
+
+  initClock() {
+    const rawTime = this.story ? (this.story.initialTime || this.story.clock || this.story.time) : null;
+    if (rawTime) {
+      const parsed = this.parseTime(rawTime);
+      if (parsed) {
+        this.clockObj = parsed;
+        this.currentClock = this.formatTime(this.clockObj);
+        this.callbacks.onClockUpdate(this.currentClock);
+        return;
+      }
+    }
+    this.clockObj = null;
+    this.currentClock = null;
+    this.callbacks.onClockUpdate(null);
+  }
+
+  setClock(timeStr) {
+    const parsed = this.parseTime(timeStr);
+    if (parsed) {
+      this.clockObj = parsed;
+      this.currentClock = this.formatTime(this.clockObj);
+      this.callbacks.onClockUpdate(this.currentClock);
+    }
+  }
+
+  advanceClock(minutesToAdd) {
+    if (!this.clockObj) return;
+    const add = parseInt(minutesToAdd, 10);
+    if (isNaN(add) || add === 0) return;
+
+    let totalMinutes = (this.clockObj.hours % 12) * 60 + this.clockObj.minutes;
+    if (this.clockObj.ampm === "PM") {
+      totalMinutes += 12 * 60;
+    }
+
+    totalMinutes = (totalMinutes + add) % (24 * 60);
+    if (totalMinutes < 0) totalMinutes += 24 * 60;
+
+    let totalHours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    const ampm = totalHours >= 12 ? "PM" : "AM";
+    let hours = totalHours % 12;
+    if (hours === 0) hours = 12;
+
+    this.clockObj = { hours, minutes: mins, ampm };
+    this.currentClock = this.formatTime(this.clockObj);
+    this.callbacks.onClockUpdate(this.currentClock);
+  }
+
+  getClock() {
+    return this.currentClock;
   }
 
   on(event, callback) {
@@ -54,6 +132,9 @@ export class GameEngine {
     this.isChatRoomOpen = true;
     this.isTyping = false;
     
+    // Initialize in-game clock
+    this.initClock();
+
     // Choose default active chat (first visible contact)
     const charKeys = Object.keys(this.story.characters);
     const visibleChars = charKeys.filter(k => k !== "player" && this.story.characters[k].visibleByDefault !== false);
@@ -161,6 +242,15 @@ export class GameEngine {
 
   // Handles standard dialogue node typing and display delay
   playNormalNode(node) {
+    if (node.clock || node.time) {
+      this.setClock(node.clock || node.time);
+    }
+    if (node.advanceMinutes) {
+      this.advanceClock(node.advanceMinutes);
+    } else if (node.minutesTaken) {
+      this.advanceClock(node.minutesTaken);
+    }
+
     this.isTyping = true;
     const sender = this.story.characters[node.sender];
     const isPlayer = sender ? sender.isPlayer : false;
@@ -202,7 +292,8 @@ export class GameEngine {
       character: this.story.characters[node.sender] || { name: "System", avatarColor: "#6b7280", avatarText: "SYS", isPlayer: false },
       text: node.text || "",
       isComplete: true,
-      isOpened: isPlayer || isCurrentlyViewed
+      isOpened: isPlayer || isCurrentlyViewed,
+      time: this.getClock() || null
     };
 
     this.conversations[targetChatId].push(messageObj);
@@ -263,6 +354,14 @@ export class GameEngine {
 
   applyActions(actions) {
     for (const key in actions) {
+      if (key === "clock" || key === "time") {
+        this.setClock(actions[key]);
+        continue;
+      }
+      if (key === "advanceMinutes" || key === "minutesTaken") {
+        this.advanceClock(actions[key]);
+        continue;
+      }
       const val = Number(actions[key]);
       if (this.variables[key] === undefined) {
         this.variables[key] = 0;
@@ -275,6 +374,15 @@ export class GameEngine {
   // Process player clicking a choice
   selectChoice(choice) {
     if (this.isTyping) return;
+
+    if (choice.clock || choice.time) {
+      this.setClock(choice.clock || choice.time);
+    }
+    if (choice.advanceMinutes) {
+      this.advanceClock(choice.advanceMinutes);
+    } else if (choice.minutesTaken) {
+      this.advanceClock(choice.minutesTaken);
+    }
 
     // Determine target chat (either targeted choice.chat or current activeChatId)
     const targetChatId = choice.chat || this.activeChatId;
@@ -289,7 +397,8 @@ export class GameEngine {
       senderId: "player",
       character: this.story.characters["player"] || { name: "You", avatarColor: "#a855f7", avatarText: "ME", isPlayer: true },
       text: choice.text,
-      isComplete: true
+      isComplete: true,
+      time: this.getClock() || null
     };
 
     this.conversations[targetChatId].push(userMsgObj);

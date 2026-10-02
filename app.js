@@ -7,6 +7,7 @@ import { audio } from './audio.js';
 import { GameEngine } from './engine.js';
 import { StoryEditor } from './editor.js';
 import { defaultStories } from './stories.js';
+import { loadAllStoriesFromFolder } from './storyLoader.js';
 
 class AppCoordinator {
   constructor() {
@@ -27,6 +28,14 @@ class AppCoordinator {
         }
       } else {
         this.stories = JSON.parse(JSON.stringify(defaultStories));
+      }
+      // Ensure all base defaultStories are present in this.stories
+      if (typeof defaultStories !== "undefined") {
+        Object.keys(defaultStories).forEach(k => {
+          if (!this.stories[k]) {
+            this.stories[k] = JSON.parse(JSON.stringify(defaultStories[k]));
+          }
+        });
       }
     }
 
@@ -63,13 +72,26 @@ class AppCoordinator {
     this.fileInput = null;
     this.btnExportBuild = null;
 
+    // Conflict modal elements
+    this.modalImportConflict = null;
+    this.importConflictMsg = null;
+    this.importNewTitleInput = null;
+    this.btnOverwriteStory = null;
+    this.btnImportNewTitle = null;
+    this.btnCancelImport = null;
+    this.btnCloseImportConflict = null;
+
+    // Pending import conflict state
+    this.pendingImportStory = null;
+    this.pendingConflictKey = null;
+
     // View panels for mobile layout
     this.viewModeSelector = null;
     this.editorPanel = null;
     this.phonePanel = null;
   }
 
-  init() {
+  async init() {
     window.appCoordinator = this;
     // Cache UI elements
     this.messagesContainer = document.getElementById("chat-messages");
@@ -101,6 +123,9 @@ class AppCoordinator {
     this.editorPanel = document.getElementById("left-panel");
     this.phonePanel = document.getElementById("right-panel");
 
+    // Dynamically discover and load custom stories from stories/ folder
+    await this.loadStoriesFromFolder();
+
     // Populate story selector
     this.populateStorySelector();
 
@@ -109,14 +134,24 @@ class AppCoordinator {
     this.engine.on("onTypingStateChange", (isTyping, senderId) => this.updateTypingState(isTyping, senderId));
     this.engine.on("onChoicesDisplay", (choices) => this.renderChoices(choices));
     this.engine.on("onStoryRestart", () => this.clearChatHistory());
+    this.engine.on("onClockUpdate", (timeStr) => this.updateClockDisplay(timeStr));
 
-    // Initialize with default story
-    const initialStoryKey = Object.keys(this.stories)[0];
+    // Initialize with active or default story
+    const savedActiveKey = localStorage.getItem('phone_active_story');
+    const initialStoryKey = (savedActiveKey && this.stories[savedActiveKey])
+      ? savedActiveKey
+      : Object.keys(this.stories)[0];
     const initialStory = this.stories[initialStoryKey];
-    if (this.storySelect) this.storySelect.dataset.lastSelected = initialStoryKey;
+    if (this.storySelect) {
+      this.storySelect.value = initialStoryKey;
+      this.storySelect.dataset.lastSelected = initialStoryKey;
+    }
     
     this.engine.loadStory(initialStory);
-    if (this.editor) this.editor.init(initialStory);
+    if (this.editor) {
+      this.editor.setStories(this.stories);
+      this.editor.init(initialStory);
+    }
     this.openChatRoom(this.engine.activeChatId);
 
     // Attach control listeners
@@ -146,10 +181,14 @@ class AppCoordinator {
         }
         const storyKey = e.target.value;
         this.storySelect.dataset.lastSelected = storyKey;
+        localStorage.setItem('phone_active_story', storyKey);
         const selectedStory = this.stories[storyKey];
         if (selectedStory) {
           this.engine.loadStory(selectedStory);
-          if (this.editor) this.editor.init(selectedStory);
+          if (this.editor) {
+            this.editor.setStories(this.stories);
+            this.editor.init(selectedStory);
+          }
           this.openChatRoom(this.engine.activeChatId);
         }
       });
@@ -199,6 +238,55 @@ class AppCoordinator {
         } else if (e.key === "Escape") {
           e.preventDefault();
           this.closeNewStoryModal();
+        }
+      });
+    }
+
+    // Import conflict modal elements & bindings
+    this.modalImportConflict = document.getElementById("modal-import-conflict");
+    this.importConflictMsg = document.getElementById("import-conflict-msg");
+    this.importNewTitleInput = document.getElementById("import-new-title-input");
+    this.btnOverwriteStory = document.getElementById("btn-overwrite-story");
+    this.btnImportNewTitle = document.getElementById("btn-import-new-title");
+    this.btnCancelImport = document.getElementById("btn-cancel-import");
+    this.btnCloseImportConflict = document.getElementById("btn-close-import-conflict-modal");
+
+    if (this.btnOverwriteStory) {
+      this.btnOverwriteStory.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
+        this.confirmOverwriteImport();
+      });
+    }
+
+    if (this.btnImportNewTitle) {
+      this.btnImportNewTitle.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
+        this.confirmNewTitleImport();
+      });
+    }
+
+    if (this.btnCancelImport) {
+      this.btnCancelImport.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
+        this.closeImportConflictModal();
+      });
+    }
+
+    if (this.btnCloseImportConflict) {
+      this.btnCloseImportConflict.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
+        this.closeImportConflictModal();
+      });
+    }
+
+    if (this.importNewTitleInput) {
+      this.importNewTitleInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          this.confirmNewTitleImport();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          this.closeImportConflictModal();
         }
       });
     }
@@ -255,6 +343,54 @@ class AppCoordinator {
 
     this.startStatusBarClock();
     this.setupViewModeTabs();
+    window.addEventListener("resize", () => this.tightenChoiceButtons());
+  }
+
+  async loadStoriesFromFolder() {
+    if (window.IS_STANDALONE || typeof loadAllStoriesFromFolder !== 'function') {
+      return;
+    }
+
+    try {
+      const folderStories = await loadAllStoriesFromFolder();
+      const savedHashes = JSON.parse(localStorage.getItem('phone_story_hashes') || '{}');
+      let updatedAny = false;
+
+      for (const [key, story] of Object.entries(folderStories)) {
+        const storyKey = story.id || key;
+        const currentHash = this.getStoryHash(story);
+
+        // If story doesn't exist yet in this.stories, or if file on disk was modified:
+        if (!this.stories[storyKey] || savedHashes[storyKey] !== currentHash) {
+          this.stories[storyKey] = story;
+          savedHashes[storyKey] = currentHash;
+          updatedAny = true;
+        }
+      }
+
+      localStorage.setItem('phone_story_hashes', JSON.stringify(savedHashes));
+
+      if (updatedAny) {
+        this.saveStoriesToLocalStorage();
+      }
+
+      // Update editor context with all loaded stories
+      if (this.editor && typeof this.editor.setStories === 'function') {
+        this.editor.setStories(this.stories);
+      }
+    } catch (err) {
+      console.warn("[App] Failed to load stories from folder:", err);
+    }
+  }
+
+  getStoryHash(story) {
+    const str = JSON.stringify(story);
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return String(hash);
   }
 
   saveStoriesToLocalStorage(targetKey) {
@@ -269,6 +405,7 @@ class AppCoordinator {
 
   populateStorySelector() {
     if (!this.storySelect) return;
+    const currentSelected = this.storySelect.value || this.storySelect.dataset.lastSelected;
     this.storySelect.innerHTML = "";
     Object.keys(this.stories).forEach(key => {
       const option = document.createElement("option");
@@ -276,6 +413,10 @@ class AppCoordinator {
       option.textContent = this.stories[key].title;
       this.storySelect.appendChild(option);
     });
+    if (currentSelected && this.stories[currentSelected]) {
+      this.storySelect.value = currentSelected;
+      this.storySelect.dataset.lastSelected = currentSelected;
+    }
   }
 
   openNewStoryModal() {
@@ -305,6 +446,106 @@ class AppCoordinator {
     const title = (this.modalNewStoryInput && this.modalNewStoryInput.value.trim()) || "Untitled Story";
     this.closeNewStoryModal();
     this.createNewStory(title);
+  }
+
+  importStory(parsedStory) {
+    if (!parsedStory || !parsedStory.title) return;
+
+    // Save current story edits first
+    if (this.editor && this.editor.currentStory && this.storySelect && this.storySelect.value) {
+      this.stories[this.storySelect.value] = this.editor.currentStory;
+      this.saveStoriesToLocalStorage(this.storySelect.value);
+    }
+
+    const titleToMatch = parsedStory.title.trim().toLowerCase();
+    const existingKey = Object.keys(this.stories).find(key => {
+      const s = this.stories[key];
+      return s && s.title && s.title.trim().toLowerCase() === titleToMatch;
+    });
+
+    if (existingKey) {
+      this.pendingImportStory = parsedStory;
+      this.pendingConflictKey = existingKey;
+      this.openImportConflictModal(parsedStory.title);
+    } else {
+      const storyId = "custom_story_" + Date.now();
+      this.saveAndLoadImportedStory(storyId, parsedStory, `Successfully imported story "${parsedStory.title}" as a new story.`);
+    }
+  }
+
+  saveAndLoadImportedStory(storyId, storyObj, successMsg) {
+    this.stories[storyId] = storyObj;
+    this.populateStorySelector();
+    if (this.storySelect) {
+      this.storySelect.value = storyId;
+      this.storySelect.dataset.lastSelected = storyId;
+    }
+    this.engine.loadStory(storyObj);
+    if (this.editor) this.editor.init(storyObj);
+    this.saveStoriesToLocalStorage(storyId);
+    this.openChatRoom(this.engine.activeChatId);
+    if (successMsg) {
+      alert(successMsg);
+    }
+  }
+
+  openImportConflictModal(title) {
+    if (!this.modalImportConflict) {
+      const overwrite = confirm(`A story named "${title}" already exists.\n\nClick OK to overwrite the existing story, or Cancel to import it with a new title.`);
+      if (overwrite) {
+        this.saveAndLoadImportedStory(this.pendingConflictKey, this.pendingImportStory, `Successfully overwritten existing story "${title}".`);
+      } else {
+        const newTitle = prompt("Enter a new title for the imported story:", `${title} (Copy)`);
+        if (newTitle && newTitle.trim()) {
+          this.pendingImportStory.title = newTitle.trim();
+          const storyId = "custom_story_" + Date.now();
+          this.saveAndLoadImportedStory(storyId, this.pendingImportStory, `Successfully imported story as "${newTitle.trim()}".`);
+        }
+      }
+      this.pendingImportStory = null;
+      this.pendingConflictKey = null;
+      return;
+    }
+
+    if (this.importConflictMsg) {
+      this.importConflictMsg.innerHTML = `A story named "<strong>${title}</strong>" already exists. Would you like to overwrite it or import it with a new title?`;
+    }
+    if (this.importNewTitleInput) {
+      this.importNewTitleInput.value = `${title} (Copy)`;
+    }
+    this.modalImportConflict.classList.remove("hidden");
+    if (this.importNewTitleInput) {
+      setTimeout(() => {
+        this.importNewTitleInput.focus();
+        this.importNewTitleInput.select();
+      }, 50);
+    }
+  }
+
+  closeImportConflictModal() {
+    if (this.modalImportConflict) {
+      this.modalImportConflict.classList.add("hidden");
+    }
+    this.pendingImportStory = null;
+    this.pendingConflictKey = null;
+  }
+
+  confirmOverwriteImport() {
+    if (!this.pendingImportStory || !this.pendingConflictKey) return;
+    const storyKey = this.pendingConflictKey;
+    const storyObj = this.pendingImportStory;
+    this.closeImportConflictModal();
+    this.saveAndLoadImportedStory(storyKey, storyObj, `Successfully overwritten existing story "${storyObj.title}".`);
+  }
+
+  confirmNewTitleImport() {
+    if (!this.pendingImportStory) return;
+    const newTitle = (this.importNewTitleInput && this.importNewTitleInput.value.trim()) || `${this.pendingImportStory.title} (Copy)`;
+    const storyObj = this.pendingImportStory;
+    storyObj.title = newTitle;
+    const storyId = "custom_story_" + Date.now();
+    this.closeImportConflictModal();
+    this.saveAndLoadImportedStory(storyId, storyObj, `Successfully imported story as "${newTitle}".`);
   }
 
   createNewStory(customTitle) {
@@ -434,9 +675,13 @@ class AppCoordinator {
       item.className = `chat-list-item ${isUnread ? 'unread' : ''}`;
 
       let lastMsgText = "No messages yet";
+      let lastMsgTime = "Now";
       if (logs.length > 0) {
         const lastMsg = logs[logs.length - 1];
         lastMsgText = lastMsg.senderId === "player" ? `You: ${lastMsg.text}` : lastMsg.text;
+        if (lastMsg.time) {
+          lastMsgTime = lastMsg.time;
+        }
       } else if (this.engine.activeChoices && this.engine.activeChoices.length > 0) {
         // Evaluate if this background contact is waiting for an active response
         const hasChoiceInThread = this.engine.activeChoices.some(ch => {
@@ -458,7 +703,7 @@ class AppCoordinator {
         <div class="chat-item-content">
           <div class="chat-item-top">
             <span class="chat-item-name">${char.name}</span>
-            <span class="chat-item-time">Now</span>
+            <span class="chat-item-time">${lastMsgTime}</span>
           </div>
           <span class="chat-item-preview">${lastMsgText}</span>
         </div>
@@ -528,6 +773,7 @@ class AppCoordinator {
         ${avatarHtml}
         <div class="msg-bubble complete">
           <div class="msg-body">${msg.text}</div>
+          ${msg.time ? `<div class="msg-time">${msg.time}</div>` : ''}
         </div>
       `;
 
@@ -620,7 +866,39 @@ class AppCoordinator {
       this.choicesContainer.appendChild(btn);
     });
 
-    this.scrollToBottom();
+    requestAnimationFrame(() => {
+      this.tightenChoiceButtons();
+      this.scrollToBottom();
+    });
+  }
+
+  // Tighten choice button widths to the longest wrapped text line
+  tightenChoiceButtons() {
+    if (!this.choicesContainer) return;
+    const buttons = this.choicesContainer.querySelectorAll(".choice-btn");
+    buttons.forEach(btn => {
+      btn.style.width = "";
+      const range = document.createRange();
+      range.selectNodeContents(btn);
+      const rects = range.getClientRects();
+      if (rects.length > 0) {
+        let maxLineWidth = 0;
+        for (let i = 0; i < rects.length; i++) {
+          if (rects[i].width > maxLineWidth) {
+            maxLineWidth = rects[i].width;
+          }
+        }
+        if (maxLineWidth > 0) {
+          const comp = window.getComputedStyle(btn);
+          const padL = parseFloat(comp.paddingLeft) || 0;
+          const padR = parseFloat(comp.paddingRight) || 0;
+          const borL = parseFloat(comp.borderLeftWidth) || 0;
+          const borR = parseFloat(comp.borderRightWidth) || 0;
+          const targetWidth = Math.ceil(maxLineWidth + padL + padR + borL + borR + 1);
+          btn.style.width = `${targetWidth}px`;
+        }
+      }
+    });
   }
 
   // Update back arrow button unread messages counter
@@ -661,17 +939,32 @@ class AppCoordinator {
 
     this.updatePhoneHeader();
     this.updateBackUnreadBadge();
+    this.updateClockDisplay(this.engine.getClock());
   }
 
   scrollToBottom() {
     this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
   }
 
+  updateClockDisplay(timeStr) {
+    const clockEl = document.getElementById("status-time");
+    if (!clockEl) return;
+    if (timeStr) {
+      clockEl.textContent = timeStr;
+    } else if (this.updateSystemTime) {
+      this.updateSystemTime();
+    }
+  }
+
   startStatusBarClock() {
     const clockEl = document.getElementById("status-time");
     if (!clockEl) return;
 
-    const updateTime = () => {
+    this.updateSystemTime = () => {
+      if (this.engine && this.engine.getClock()) {
+        clockEl.textContent = this.engine.getClock();
+        return;
+      }
       const now = new Date();
       let hours = now.getHours();
       const minutes = String(now.getMinutes()).padStart(2, "0");
@@ -681,8 +974,8 @@ class AppCoordinator {
       clockEl.textContent = `${hours}:${minutes} ${ampm}`;
     };
 
-    updateTime();
-    setInterval(updateTime, 30000);
+    this.updateSystemTime();
+    setInterval(this.updateSystemTime, 30000);
   }
 
   setupViewModeTabs() {
@@ -802,8 +1095,10 @@ class AppCoordinator {
     class StoryEditor {
       constructor() {
         this.currentStory = activeStory;
+        this.stories = { "active": activeStory };
       }
       init() {}
+      setStories() {}
     }
 
     // Audio Controller Script
@@ -836,7 +1131,7 @@ class AppCoordinator {
   }
 }
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
   const app = new AppCoordinator();
-  app.init();
+  await app.init();
 });

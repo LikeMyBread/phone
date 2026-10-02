@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="An interactive simulated phone game engine to write, play, and share branching chat stories.">
   <title>CYOA Phone Chat Story Engine</title>
-  <link rel="stylesheet" href="style.css?v=1.5">
+  <link rel="stylesheet" href="style.css?v=1.7">
 </head>
 <body>
 
@@ -176,7 +176,7 @@
   </main>
 
   <!-- Load Main Application Module -->
-  <script type="module" src="app.js?v=1.5"></script>
+  <script type="module" src="app.js?v=1.7"></script>
 
   <!-- Custom Modal for New Story Creation -->
   <div id="modal-new-story" class="modal-overlay hidden">
@@ -192,6 +192,26 @@
       <div class="modal-footer">
         <button type="button" id="btn-cancel-new-story" class="btn btn-secondary btn-sm">Cancel</button>
         <button type="button" id="btn-confirm-new-story" class="btn btn-primary btn-sm">Create Story</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Modal for Import Conflict Resolution -->
+  <div id="modal-import-conflict" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>⚠️ Story Title Conflict</h3>
+        <button type="button" class="btn-close-modal" id="btn-close-import-conflict-modal">✖</button>
+      </div>
+      <div class="modal-body">
+        <p id="import-conflict-msg" style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;"></p>
+        <label for="import-new-title-input" class="modal-label">New Story Title</label>
+        <input type="text" id="import-new-title-input" class="modal-input" placeholder="Enter new story title...">
+      </div>
+      <div class="modal-footer" style="flex-wrap: wrap;">
+        <button type="button" id="btn-cancel-import" class="btn btn-secondary btn-sm">Cancel</button>
+        <button type="button" id="btn-overwrite-story" class="btn btn-danger btn-sm">Overwrite</button>
+        <button type="button" id="btn-import-new-title" class="btn btn-primary btn-sm">Import as New</button>
       </div>
     </div>
   </div>

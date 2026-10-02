@@ -9,6 +9,7 @@ export class StoryEditor {
   constructor(engine) {
     this.engine = engine;
     this.currentStory = null;
+    this.stories = null;
     this.selectedNodeId = null; // Stored as path string, e.g. "0" or "0,choices,1,nodes,2"
 
     // UI Cache Elements
@@ -17,6 +18,7 @@ export class StoryEditor {
     this.storySelect = null;
 
     this.init = this.init.bind(this);
+    this.setStories = this.setStories.bind(this);
     this.renderNodeList = this.renderNodeList.bind(this);
     this.selectNode = this.selectNode.bind(this);
     this.saveNodeFromForm = this.saveNodeFromForm.bind(this);
@@ -58,6 +60,11 @@ export class StoryEditor {
     if (this.currentStory.nodes && this.currentStory.nodes.length > 0) {
       this.selectNode("0");
     }
+  }
+
+  // Update editor's context of all available stories
+  setStories(stories) {
+    this.stories = stories;
   }
 
   // Resolve a path string (e.g. "0,choices,1,nodes,2") to its parent list and index
@@ -1144,12 +1151,18 @@ export class StoryEditor {
           throw new Error("Invalid Story JSON schema. Must have title and a nodes array.");
         }
         
-        this.init(parsed);
-        this.engine.loadStory(parsed);
-        alert(`Successfully imported tree story: ${parsed.title}`);
-        this.triggerLocalStorageSave();
+        if (window.appCoordinator && typeof window.appCoordinator.importStory === 'function') {
+          window.appCoordinator.importStory(parsed);
+        } else {
+          this.init(parsed);
+          this.engine.loadStory(parsed);
+          alert(`Successfully imported tree story: ${parsed.title}`);
+          this.triggerLocalStorageSave();
+        }
       } catch (err) {
         alert("Failed to parse tree story JSON: " + err.message);
+      } finally {
+        event.target.value = '';
       }
     };
     reader.readAsText(file);
