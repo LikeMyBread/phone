@@ -92,6 +92,8 @@ class AppCoordinator {
 
     // Knowledge Matrix Live HUD Elements
     this.btnToggleKnowledgeHud = null;
+    this.btnTopKnowledgeHud = null;
+    this.btnListKnowledgeHud = null;
     this.phoneKnowledgeHud = null;
     this.btnCloseKnowledgeHud = null;
     this.phoneKnowledgeHudBody = null;
@@ -117,6 +119,8 @@ class AppCoordinator {
     this.contactAvatarEl = document.getElementById("phone-contact-avatar");
 
     this.btnToggleKnowledgeHud = document.getElementById("btn-toggle-knowledge-hud");
+    this.btnTopKnowledgeHud = document.getElementById("btn-top-knowledge-hud");
+    this.btnListKnowledgeHud = document.getElementById("btn-list-knowledge-hud");
     this.phoneKnowledgeHud = document.getElementById("phone-knowledge-hud");
     this.btnCloseKnowledgeHud = document.getElementById("btn-close-knowledge-hud");
     this.phoneKnowledgeHudBody = document.getElementById("phone-knowledge-hud-body");
@@ -182,12 +186,24 @@ class AppCoordinator {
       });
     }
 
+    const handleToggleHud = (e) => {
+      if (e) e.stopPropagation();
+      audio.playClick();
+      // Ensure phone simulator is visible when opening the HUD
+      if (document.body.dataset.viewMode === "edit") {
+        this.switchViewMode("play");
+      }
+      this.toggleKnowledgeHud();
+    };
+
     if (this.btnToggleKnowledgeHud) {
-      this.btnToggleKnowledgeHud.addEventListener("click", (e) => {
-        if (e) e.stopPropagation();
-        audio.playClick();
-        this.toggleKnowledgeHud();
-      });
+      this.btnToggleKnowledgeHud.addEventListener("click", handleToggleHud);
+    }
+    if (this.btnTopKnowledgeHud) {
+      this.btnTopKnowledgeHud.addEventListener("click", handleToggleHud);
+    }
+    if (this.btnListKnowledgeHud) {
+      this.btnListKnowledgeHud.addEventListener("click", handleToggleHud);
     }
 
     if (this.btnCloseKnowledgeHud) {
@@ -399,8 +415,15 @@ class AppCoordinator {
 
     if (facts.length === 0) {
       this.phoneKnowledgeHudBody.innerHTML = `
-        <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.85rem; font-style: italic;">
-          No facts registered in the Knowledge Matrix for this story.
+        <div style="padding: 24px; text-align: center;">
+          <div style="font-size: 1.8rem; margin-bottom: 8px;">🧠</div>
+          <h4 style="color: var(--color-accent); font-size: 0.95rem; margin-bottom: 6px;">Knowledge Matrix Active</h4>
+          <p style="color: var(--text-muted); font-size: 0.8rem; line-height: 1.5; margin-bottom: 10px;">
+            No facts are configured in this story yet.
+          </p>
+          <p style="color: var(--text-muted); font-size: 0.75rem; line-height: 1.4;">
+            Add facts in the <strong>🧠 Knowledge Matrix</strong> section of the Story Workspace, or switch to <strong>"The Espresso Incident"</strong> from the top story selector to test the Canary Trap mystery!
+          </p>
         </div>
       `;
       return;
@@ -1090,6 +1113,7 @@ class AppCoordinator {
         this.btnRestart.innerHTML = `<span class="icon">📝</span> Edit Draft`;
       } else {
         this.btnRestart.innerHTML = `<span class="icon">🔄</span> Playtest Draft`;
+        this.closeKnowledgeHud();
       }
     }
   }

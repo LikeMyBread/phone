@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="An interactive simulated phone game engine to write, play, and share branching chat stories.">
   <title>CYOA Phone Chat Story Engine</title>
-  <link rel="stylesheet" href="style.css?v=1.7">
+  <link rel="stylesheet" href="style.css?v=1.9">
 </head>
 <body>
 
@@ -19,6 +19,10 @@
       <select id="story-select" style="max-width: 220px; padding: 6px 12px; font-size: 0.85rem;">
         <!-- Dynamically Populated -->
       </select>
+
+      <button id="btn-top-knowledge-hud" class="btn btn-secondary btn-sm" title="View Character Knowledge Matrix">
+        <span class="icon">🧠</span> Knowledge Matrix
+      </button>
 
       <button id="btn-restart-game" class="btn btn-primary btn-sm">
         <span class="icon">🔄</span> Playtest Draft
@@ -150,8 +154,11 @@
 
           <!-- Chat List View Panel (Conversations selector) -->
           <div id="phone-chat-list-view" class="phone-chat-list-body hidden">
-            <div class="chat-list-header">
+            <div class="chat-list-header" style="display: flex; justify-content: space-between; align-items: center;">
               <h2>Messages</h2>
+              <button id="btn-list-knowledge-hud" class="phone-hud-btn" type="button" title="View Live Knowledge Matrix">
+                <span class="hud-icon">🧠</span>
+              </button>
             </div>
             <div id="chats-list" class="chats-list-container">
               <!-- Dynamically populated chat threads cells -->
@@ -211,7 +218,7 @@
   </main>
 
   <!-- Load Main Application Module -->
-  <script type="module" src="app.js?v=1.7"></script>
+  <script type="module" src="app.js?v=1.9"></script>
 
   <!-- Custom Modal for New Story Creation -->
   <div id="modal-new-story" class="modal-overlay hidden">
