@@ -2003,6 +2003,16 @@ body[data-view-mode="play"] #right-panel {
   font-size: 1.1rem;
 }
 
+/* Standalone build: suppress debugging HUD tools */
+body[data-standalone="true"] .phone-hud-btn,
+body[data-standalone="true"] .phone-hud-overlay,
+.is-standalone .phone-hud-btn,
+.is-standalone .phone-hud-overlay,
+.standalone-workspace .phone-hud-btn,
+.standalone-workspace .phone-hud-overlay {
+  display: none !important;
+}
+
 .phone-hud-overlay {
   position: absolute;
   top: 0;

@@ -118,12 +118,25 @@ class AppCoordinator {
     this.contactStatusEl = document.getElementById("phone-contact-status");
     this.contactAvatarEl = document.getElementById("phone-contact-avatar");
 
-    this.btnToggleKnowledgeHud = document.getElementById("btn-toggle-knowledge-hud");
-    this.btnTopKnowledgeHud = document.getElementById("btn-top-knowledge-hud");
-    this.btnListKnowledgeHud = document.getElementById("btn-list-knowledge-hud");
-    this.phoneKnowledgeHud = document.getElementById("phone-knowledge-hud");
-    this.btnCloseKnowledgeHud = document.getElementById("btn-close-knowledge-hud");
-    this.phoneKnowledgeHudBody = document.getElementById("phone-knowledge-hud-body");
+    if (window.IS_STANDALONE) {
+      // Remove any lingering debugging HUD elements from DOM in standalone builds
+      document.querySelectorAll(
+        "#phone-knowledge-hud, #btn-toggle-knowledge-hud, #btn-list-knowledge-hud, .phone-hud-btn, .phone-hud-overlay"
+      ).forEach(el => el.remove());
+      this.btnToggleKnowledgeHud = null;
+      this.btnTopKnowledgeHud = null;
+      this.btnListKnowledgeHud = null;
+      this.phoneKnowledgeHud = null;
+      this.btnCloseKnowledgeHud = null;
+      this.phoneKnowledgeHudBody = null;
+    } else {
+      this.btnToggleKnowledgeHud = document.getElementById("btn-toggle-knowledge-hud");
+      this.btnTopKnowledgeHud = document.getElementById("btn-top-knowledge-hud");
+      this.btnListKnowledgeHud = document.getElementById("btn-list-knowledge-hud");
+      this.phoneKnowledgeHud = document.getElementById("phone-knowledge-hud");
+      this.btnCloseKnowledgeHud = document.getElementById("btn-close-knowledge-hud");
+      this.phoneKnowledgeHudBody = document.getElementById("phone-knowledge-hud-body");
+    }
 
     this.btnRestart = document.getElementById("btn-restart-game");
     this.storySelect = document.getElementById("story-select");
@@ -390,7 +403,7 @@ class AppCoordinator {
   }
 
   toggleKnowledgeHud() {
-    if (!this.phoneKnowledgeHud) return;
+    if (window.IS_STANDALONE || !this.phoneKnowledgeHud) return;
     const isHidden = this.phoneKnowledgeHud.classList.contains("hidden");
     if (isHidden) {
       this.phoneKnowledgeHud.classList.remove("hidden");
@@ -401,13 +414,12 @@ class AppCoordinator {
   }
 
   closeKnowledgeHud() {
-    if (this.phoneKnowledgeHud) {
-      this.phoneKnowledgeHud.classList.add("hidden");
-    }
+    if (window.IS_STANDALONE || !this.phoneKnowledgeHud) return;
+    this.phoneKnowledgeHud.classList.add("hidden");
   }
 
   renderKnowledgeHud(matrix, summary) {
-    if (!this.phoneKnowledgeHudBody) return;
+    if (window.IS_STANDALONE || !this.phoneKnowledgeHudBody) return;
     const sum = summary || this.engine.getKnowledgeSummary();
     const characters = sum.characters || [];
     const facts = sum.facts || [];
@@ -1143,7 +1155,8 @@ class AppCoordinator {
       // Helper function to clean JS modules imports/exports
       const cleanScript = (jsText) => {
         return jsText
-          .replace(/import\s+[\s\S]*?;\s*/g, "") // Remove imports
+          .replace(/^import\s+[\s\S]*?from\s+['"][^'"]+['"];?\s*$/gm, "") // Remove top-level imports
+          .replace(/^import\s+['"][^'"]+['"];?\s*$/gm, "")
           .replace(/export\s+class\s+/g, "class ") // Remove export class
           .replace(/export\s+const\s+/g, "const ") // Remove export const
           .replace(/export\s+default\s+/g, "");
@@ -1160,7 +1173,14 @@ class AppCoordinator {
         return;
       }
       
-      const phoneHtml = phonePanelEl.outerHTML;
+      // Clone phone panel and strip developer debugging UI tools (Knowledge Matrix HUD & buttons)
+      const phonePanelClone = phonePanelEl.cloneNode(true);
+      const debugHudElements = phonePanelClone.querySelectorAll(
+        "#phone-knowledge-hud, #btn-toggle-knowledge-hud, #btn-list-knowledge-hud, .phone-hud-btn, .phone-hud-overlay"
+      );
+      debugHudElements.forEach(el => el.remove());
+
+      const phoneHtml = phonePanelClone.outerHTML;
 
       // Construct a single standalone HTML document
       const htmlContent = `<!DOCTYPE html>
@@ -1197,9 +1217,16 @@ class AppCoordinator {
       justify-content: center;
       align-items: center;
     }
+    /* Suppress developer debugging tools in built game */
+    .phone-hud-btn,
+    .phone-hud-overlay,
+    .standalone-workspace .phone-hud-btn,
+    .standalone-workspace .phone-hud-overlay {
+      display: none !important;
+    }
   </style>
 </head>
-<body data-view-mode="play">
+<body data-view-mode="play" data-standalone="true" class="is-standalone">
 
   <main class="standalone-workspace">
     ${phoneHtml}
@@ -1234,16 +1261,24 @@ class AppCoordinator {
 </body>
 </html>`;
 
-      // Download file blob
-      const blob = new Blob([htmlContent], { type: "text/html" });
+      // Download file blob with delayed URL revocation to ensure Chrome completes file write
+      const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
+      const fileName = (activeStory.title || "story").toLowerCase().replace(/[^a-z0-9]+/g, "_") + "_standalone.html";
       const a = document.createElement("a");
+      a.style.display = "none";
       a.href = url;
-      a.download = activeStory.title.toLowerCase().replace(/[^a-z0-9]+/g, "_") + "_standalone.html";
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+
+      // Keep blob URL alive for 60s so browser background download engine can stream file to disk
+      setTimeout(() => {
+        if (a.parentNode) {
+          a.parentNode.removeChild(a);
+        }
+        URL.revokeObjectURL(url);
+      }, 60000);
 
     } catch (error) {
       console.error("Export build failed:", error);

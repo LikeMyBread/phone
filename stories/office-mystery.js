@@ -218,7 +218,7 @@ export const story = {
     },
     {
       "sender": "system",
-      "text": "[CANARY TRAP READY] Open the 🧠 Knowledge Matrix in the header to review who knows what, then confront the suspect.",
+      "text": "[CANARY TRAP READY] Review what each suspect was told, then confront who slipped up.",
       "delay": 900,
       "choices": [
         {
