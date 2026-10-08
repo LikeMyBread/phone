@@ -89,6 +89,12 @@ class AppCoordinator {
     this.viewModeSelector = null;
     this.editorPanel = null;
     this.phonePanel = null;
+
+    // Knowledge Matrix Live HUD Elements
+    this.btnToggleKnowledgeHud = null;
+    this.phoneKnowledgeHud = null;
+    this.btnCloseKnowledgeHud = null;
+    this.phoneKnowledgeHudBody = null;
   }
 
   async init() {
@@ -109,6 +115,11 @@ class AppCoordinator {
     this.contactNameEl = document.getElementById("phone-contact-name");
     this.contactStatusEl = document.getElementById("phone-contact-status");
     this.contactAvatarEl = document.getElementById("phone-contact-avatar");
+
+    this.btnToggleKnowledgeHud = document.getElementById("btn-toggle-knowledge-hud");
+    this.phoneKnowledgeHud = document.getElementById("phone-knowledge-hud");
+    this.btnCloseKnowledgeHud = document.getElementById("btn-close-knowledge-hud");
+    this.phoneKnowledgeHudBody = document.getElementById("phone-knowledge-hud-body");
 
     this.btnRestart = document.getElementById("btn-restart-game");
     this.storySelect = document.getElementById("story-select");
@@ -135,6 +146,7 @@ class AppCoordinator {
     this.engine.on("onChoicesDisplay", (choices) => this.renderChoices(choices));
     this.engine.on("onStoryRestart", () => this.clearChatHistory());
     this.engine.on("onClockUpdate", (timeStr) => this.updateClockDisplay(timeStr));
+    this.engine.on("onKnowledgeUpdate", (matrix, summary) => this.renderKnowledgeHud(matrix, summary));
 
     // Initialize with active or default story
     const savedActiveKey = localStorage.getItem('phone_active_story');
@@ -167,6 +179,21 @@ class AppCoordinator {
         } else {
           this.switchViewMode("edit");
         }
+      });
+    }
+
+    if (this.btnToggleKnowledgeHud) {
+      this.btnToggleKnowledgeHud.addEventListener("click", (e) => {
+        if (e) e.stopPropagation();
+        audio.playClick();
+        this.toggleKnowledgeHud();
+      });
+    }
+
+    if (this.btnCloseKnowledgeHud) {
+      this.btnCloseKnowledgeHud.addEventListener("click", (e) => {
+        if (e) e.stopPropagation();
+        this.closeKnowledgeHud();
       });
     }
 
@@ -344,6 +371,74 @@ class AppCoordinator {
     this.startStatusBarClock();
     this.setupViewModeTabs();
     window.addEventListener("resize", () => this.tightenChoiceButtons());
+  }
+
+  toggleKnowledgeHud() {
+    if (!this.phoneKnowledgeHud) return;
+    const isHidden = this.phoneKnowledgeHud.classList.contains("hidden");
+    if (isHidden) {
+      this.phoneKnowledgeHud.classList.remove("hidden");
+      this.renderKnowledgeHud(this.engine.knowledgeMatrix, this.engine.getKnowledgeSummary());
+    } else {
+      this.phoneKnowledgeHud.classList.add("hidden");
+    }
+  }
+
+  closeKnowledgeHud() {
+    if (this.phoneKnowledgeHud) {
+      this.phoneKnowledgeHud.classList.add("hidden");
+    }
+  }
+
+  renderKnowledgeHud(matrix, summary) {
+    if (!this.phoneKnowledgeHudBody) return;
+    const sum = summary || this.engine.getKnowledgeSummary();
+    const characters = sum.characters || [];
+    const facts = sum.facts || [];
+    const mat = matrix || sum.matrix || [];
+
+    if (facts.length === 0) {
+      this.phoneKnowledgeHudBody.innerHTML = `
+        <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.85rem; font-style: italic;">
+          No facts registered in the Knowledge Matrix for this story.
+        </div>
+      `;
+      return;
+    }
+
+    let html = `
+      <table class="hud-knowledge-table">
+        <thead>
+          <tr>
+            <th style="text-align: left; min-width: 90px;">Contact</th>
+            ${facts.map(f => `<th>${f}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    characters.forEach((charKey, charIdx) => {
+      const charObj = (this.engine.story && this.engine.story.characters && this.engine.story.characters[charKey]) || { name: charKey };
+      html += `
+        <tr>
+          <td style="text-align: left; display: flex; align-items: center; gap: 6px;">
+            <span style="display: inline-block; width: 20px; height: 20px; border-radius: 50%; background-color: ${charObj.avatarColor || '#6b7280'}; color: #fff; font-size: 0.65rem; font-weight: 700; text-align: center; line-height: 20px; flex-shrink: 0;">${charObj.avatarText || charKey.substring(0, 2).toUpperCase()}</span>
+            <span style="font-size: 0.8rem; font-weight: 500;">${charObj.name || charKey}</span>
+          </td>
+          ${facts.map((_, factIdx) => {
+            const knows = Boolean(mat[charIdx] && mat[charIdx][factIdx]);
+            return `<td><span class="${knows ? 'hud-knows-yes' : 'hud-knows-no'}">${knows ? '✔' : '—'}</span></td>`;
+          }).join('')}
+        </tr>
+      `;
+    });
+
+    html += `
+        </tbody>
+      </table>
+    `;
+
+    this.phoneKnowledgeHudBody.innerHTML = html;
   }
 
   async loadStoriesFromFolder() {
@@ -562,6 +657,8 @@ class AppCoordinator {
       title: title,
       description: "Describe your branching story here.",
       variables: {},
+      facts: [],
+      knowledgeMatrix: [],
       characters: {
         player: {
           name: "Player",

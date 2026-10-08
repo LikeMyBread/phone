@@ -1770,3 +1770,329 @@ body[data-view-mode="play"] #right-panel {
   gap: 10px;
   margin-top: 8px;
 }
+
+/* ==========================================================================
+   Knowledge Matrix (Canary Trap) Styles
+   ========================================================================== */
+
+.knowledge-matrix-section {
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-translucent);
+  border-radius: var(--border-radius-md);
+  padding: 18px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.knowledge-matrix-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-translucent);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.matrix-title-group h3 {
+  font-family: var(--font-outfit);
+  font-size: 1.15rem;
+  color: var(--color-accent);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.matrix-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 3px;
+  display: block;
+}
+
+.knowledge-matrix-scroller {
+  overflow-x: auto;
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--border-translucent);
+  background: rgba(10, 9, 18, 0.4);
+}
+
+.knowledge-matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 520px;
+  font-size: 0.85rem;
+}
+
+.knowledge-matrix-table th,
+.knowledge-matrix-table td {
+  padding: 10px 14px;
+  border: 1px solid var(--border-translucent);
+  text-align: center;
+  vertical-align: middle;
+}
+
+.knowledge-matrix-table th {
+  background: rgba(22, 21, 35, 0.9);
+  color: var(--text-main);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.matrix-char-th {
+  text-align: left !important;
+  min-width: 180px;
+  width: 220px;
+}
+
+.matrix-char-cell {
+  text-align: left !important;
+  background: rgba(22, 21, 35, 0.7);
+}
+
+.matrix-char-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.matrix-char-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.matrix-char-name {
+  font-weight: 500;
+  color: var(--text-main);
+  font-size: 0.85rem;
+}
+
+.matrix-char-player-tag {
+  font-size: 0.65rem;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--color-success);
+  margin-left: 4px;
+}
+
+.matrix-fact-header {
+  min-width: 140px;
+}
+
+.matrix-fact-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.matrix-fact-name-input {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--border-radius-sm);
+  color: var(--color-accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  width: 100%;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.matrix-fact-name-input:focus {
+  border-color: var(--color-primary);
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+}
+
+.matrix-fact-del-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.matrix-fact-del-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--color-danger);
+}
+
+.matrix-cell {
+  background: rgba(15, 14, 25, 0.5);
+  transition: background 0.15s ease;
+}
+
+.matrix-cell:hover {
+  background: rgba(168, 85, 247, 0.08);
+}
+
+.matrix-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+  transform: scale(1.15);
+  margin: 0;
+}
+
+.matrix-empty-facts {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-style: italic;
+}
+
+/* Choice card Teaches Fact group */
+.choice-learn-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  border-radius: var(--border-radius-sm);
+  padding: 4px 8px;
+}
+
+.choice-learn-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+
+/* Phone Simulator Knowledge HUD */
+.phone-hud-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--border-translucent);
+  border-radius: var(--border-radius-sm);
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-left: auto;
+  transition: all 0.2s ease;
+}
+
+.phone-hud-btn:hover {
+  background: rgba(168, 85, 247, 0.25);
+  border-color: var(--color-primary);
+  transform: scale(1.08);
+}
+
+.phone-hud-btn .hud-icon {
+  font-size: 1.1rem;
+}
+
+.phone-hud-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(5, 4, 12, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s ease;
+}
+
+.phone-hud-card {
+  width: 100%;
+  max-height: 85%;
+  background: rgba(22, 21, 35, 0.95);
+  border: 1px solid var(--border-translucent);
+  border-radius: var(--border-radius-md);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.phone-hud-header {
+  padding: 12px 16px;
+  background: rgba(14, 13, 24, 0.8);
+  border-bottom: 1px solid var(--border-translucent);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.phone-hud-header h4 {
+  font-family: var(--font-outfit);
+  font-size: 0.95rem;
+  color: var(--color-accent);
+  margin: 0;
+}
+
+.hud-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 4px;
+}
+
+.hud-close-btn:hover {
+  color: var(--color-danger);
+}
+
+.phone-hud-body {
+  padding: 14px;
+  overflow-y: auto;
+  overflow-x: auto;
+  flex: 1;
+}
+
+.hud-knowledge-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.hud-knowledge-table th,
+.hud-knowledge-table td {
+  padding: 8px 10px;
+  border: 1px solid var(--border-translucent);
+  text-align: center;
+}
+
+.hud-knowledge-table th {
+  background: rgba(15, 14, 25, 0.8);
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.hud-knows-yes {
+  color: var(--color-success);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.hud-knows-no {
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 0.8rem;
+}

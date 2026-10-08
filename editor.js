@@ -24,6 +24,11 @@ export class StoryEditor {
     this.saveNodeFromForm = this.saveNodeFromForm.bind(this);
     this.saveCharactersFromForm = this.saveCharactersFromForm.bind(this);
     this.saveVariablesFromForm = this.saveVariablesFromForm.bind(this);
+    this.renderKnowledgeMatrix = this.renderKnowledgeMatrix.bind(this);
+    this.syncKnowledgeMatrixDimensions = this.syncKnowledgeMatrixDimensions.bind(this);
+    this.addFact = this.addFact.bind(this);
+    this.deleteFact = this.deleteFact.bind(this);
+    this.renameFact = this.renameFact.bind(this);
     this.createNewNode = this.createNewNode.bind(this);
     this.createChildNode = this.createChildNode.bind(this);
     this.createTopLevelNode = this.createTopLevelNode.bind(this);
@@ -37,6 +42,9 @@ export class StoryEditor {
 
   init(storyData) {
     this.currentStory = JSON.parse(JSON.stringify(storyData));
+    if (!Array.isArray(this.currentStory.facts)) {
+      this.currentStory.facts = [];
+    }
     
     this.nodeListContainer = document.getElementById("node-list");
     this.editFormContainer = document.getElementById("node-form-container");
@@ -55,6 +63,8 @@ export class StoryEditor {
     this.renderNodeList();
     this.renderCharactersList();
     this.renderVariablesList();
+    this.syncKnowledgeMatrixDimensions();
+    this.renderKnowledgeMatrix();
 
     // Select first root node
     if (this.currentStory.nodes && this.currentStory.nodes.length > 0) {
@@ -274,44 +284,122 @@ export class StoryEditor {
         if (node.type === "conditional") {
           const condRow = document.createElement("div");
           condRow.className = "node-card-row cond-row";
+          const isKnowledge = node.conditionType === "knowledge" || Boolean(node.fact && (node.character || node.sender));
+          const charKeys = Object.keys(this.currentStory.characters || {});
+          const facts = this.currentStory.facts || [];
+
           condRow.innerHTML = `
-            <div class="field-group" style="flex: 1;">
-              <label>If Variable</label>
-              <input type="text" class="cond-var-input" placeholder="variable" value="${node.variable || ''}">
-            </div>
-            <div class="field-group" style="width: 80px;">
-              <label>Check</label>
-              <select class="cond-op-select">
-                <option value="==" ${(node.operator === '==') ? 'selected' : ''}>==</option>
-                <option value="!=" ${(node.operator === '!=') ? 'selected' : ''}>!=</option>
-                <option value=">" ${(node.operator === '>') ? 'selected' : ''}>&gt;</option>
-                <option value=">=" ${(node.operator === '>=') ? 'selected' : ''}>&gt;=</option>
-                <option value="<" ${(node.operator === '<') ? 'selected' : ''}>&lt;</option>
-                <option value="<=" ${(node.operator === '<=') ? 'selected' : ''}>&lt;=</option>
+            <div class="field-group" style="width: 145px;">
+              <label>Condition Type</label>
+              <select class="cond-type-select">
+                <option value="variable" ${!isKnowledge ? 'selected' : ''}>Variable Check</option>
+                <option value="knowledge" ${isKnowledge ? 'selected' : ''}>Character Knowledge</option>
               </select>
             </div>
-            <div class="field-group" style="width: 80px;">
-              <label>Value</label>
-              <input type="number" class="cond-val-input" value="${node.value !== undefined ? node.value : 0}">
+            <div class="cond-fields-wrapper" style="flex: 1; display: flex; gap: 8px;">
+              ${isKnowledge ? `
+                <div class="field-group" style="flex: 1;">
+                  <label>Character</label>
+                  <select class="cond-char-select">
+                    ${charKeys.map(ck => `<option value="${ck}" ${(node.character === ck || (!node.character && ck === 'player')) ? 'selected' : ''}>${this.currentStory.characters[ck].name} (${ck})</option>`).join('')}
+                  </select>
+                </div>
+                <div class="field-group" style="flex: 1;">
+                  <label>Fact</label>
+                  <select class="cond-fact-select">
+                    ${facts.length === 0 ? '<option value="">[No facts created yet]</option>' : facts.map(f => `<option value="${f}" ${node.fact === f ? 'selected' : ''}>${f}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="field-group" style="width: 130px;">
+                  <label>State</label>
+                  <select class="cond-knows-select">
+                    <option value="true" ${node.knows !== false ? 'selected' : ''}>Knows (True)</option>
+                    <option value="false" ${node.knows === false ? 'selected' : ''}>Doesn't Know (False)</option>
+                  </select>
+                </div>
+              ` : `
+                <div class="field-group" style="flex: 1;">
+                  <label>If Variable</label>
+                  <input type="text" class="cond-var-input" placeholder="variable" value="${node.variable || ''}">
+                </div>
+                <div class="field-group" style="width: 80px;">
+                  <label>Check</label>
+                  <select class="cond-op-select">
+                    <option value="==" ${(node.operator === '==') ? 'selected' : ''}>==</option>
+                    <option value="!=" ${(node.operator === '!=') ? 'selected' : ''}>!=</option>
+                    <option value=">" ${(node.operator === '>') ? 'selected' : ''}>&gt;</option>
+                    <option value=">=" ${(node.operator === '>=') ? 'selected' : ''}>&gt;=</option>
+                    <option value="<" ${(node.operator === '<') ? 'selected' : ''}>&lt;</option>
+                    <option value="<=" ${(node.operator === '<=') ? 'selected' : ''}>&lt;=</option>
+                  </select>
+                </div>
+                <div class="field-group" style="width: 80px;">
+                  <label>Value</label>
+                  <input type="number" class="cond-val-input" value="${node.value !== undefined ? node.value : 0}">
+                </div>
+              `}
             </div>
           `;
 
-          const varInput = condRow.querySelector(".cond-var-input");
-          const opSelect = condRow.querySelector(".cond-op-select");
-          const valInput = condRow.querySelector(".cond-val-input");
-
-          const saveCond = () => {
-            node.variable = varInput.value.trim();
-            node.operator = opSelect.value;
-            node.value = parseInt(valInput.value) || 0;
+          const typeSelect = condRow.querySelector(".cond-type-select");
+          typeSelect.addEventListener("change", () => {
+            if (typeSelect.value === "knowledge") {
+              node.conditionType = "knowledge";
+              node.character = charKeys[0] || "player";
+              node.fact = facts[0] || "";
+              node.knows = true;
+              delete node.variable;
+              delete node.operator;
+            } else {
+              node.conditionType = "variable";
+              node.variable = "new_var";
+              node.operator = "==";
+              node.value = 1;
+              delete node.character;
+              delete node.fact;
+              delete node.knows;
+            }
+            this.renderNodeList();
             this.engine.loadStory(this.currentStory);
             this.triggerLocalStorageSave();
-          };
-
-          [varInput, opSelect, valInput].forEach(el => {
-            el.addEventListener("input", saveCond);
-            el.addEventListener("change", saveCond);
           });
+
+          if (isKnowledge) {
+            const charSelect = condRow.querySelector(".cond-char-select");
+            const factSelect = condRow.querySelector(".cond-fact-select");
+            const knowsSelect = condRow.querySelector(".cond-knows-select");
+
+            const saveKnowledgeCond = () => {
+              node.conditionType = "knowledge";
+              node.character = charSelect ? charSelect.value : "";
+              node.fact = factSelect ? factSelect.value : "";
+              node.knows = knowsSelect ? (knowsSelect.value === "true") : true;
+              this.engine.loadStory(this.currentStory);
+              this.triggerLocalStorageSave();
+            };
+
+            [charSelect, factSelect, knowsSelect].filter(Boolean).forEach(el => {
+              el.addEventListener("change", saveKnowledgeCond);
+            });
+          } else {
+            const varInput = condRow.querySelector(".cond-var-input");
+            const opSelect = condRow.querySelector(".cond-op-select");
+            const valInput = condRow.querySelector(".cond-val-input");
+
+            const saveVarCond = () => {
+              node.conditionType = "variable";
+              node.variable = varInput.value.trim();
+              node.operator = opSelect.value;
+              node.value = parseInt(valInput.value) || 0;
+              this.engine.loadStory(this.currentStory);
+              this.triggerLocalStorageSave();
+            };
+
+            [varInput, opSelect, valInput].forEach(el => {
+              el.addEventListener("input", saveVarCond);
+              el.addEventListener("change", saveVarCond);
+            });
+          }
 
           bodyDiv.appendChild(condRow);
         } else {
@@ -457,6 +545,7 @@ export class StoryEditor {
               e.preventDefault();
               e.stopPropagation();
               choiceDiv.classList.remove("drag-over-choice");
+
               const draggedPath = this.draggedPathStr || e.dataTransfer.getData("text/plain");
               if (!draggedPath || choicePathStr.startsWith(draggedPath + ",")) return;
 
@@ -470,8 +559,20 @@ export class StoryEditor {
               actVal = choice.actions[actKey];
             }
 
+            let learnChar = "";
+            let learnFact = "";
+            if (choice.learn) {
+              if (typeof choice.learn === "string") {
+                learnFact = choice.learn;
+              } else if (typeof choice.learn === "object") {
+                learnChar = choice.learn.character || "";
+                learnFact = choice.learn.fact || "";
+              }
+            }
+
             const varKeys = Object.keys(this.currentStory.variables || {});
             const charKeys = Object.keys(this.currentStory.characters || {});
+            const facts = this.currentStory.facts || [];
 
             choiceDiv.innerHTML = `
               <div class="choice-card-inner">
@@ -485,18 +586,29 @@ export class StoryEditor {
                 <div class="choice-options-row">
                   <div class="choice-option-group">
                     <label>In Chat:</label>
-                    <select class="choice-chat-select" title="Target chat conversation" style="width: 130px;">
+                    <select class="choice-chat-select" title="Target chat conversation" style="width: 120px;">
                       <option value="" ${!choice.chat ? 'selected' : ''}>[Current Chat]</option>
                       ${charKeys.map(ck => `<option value="${ck}" ${choice.chat === ck ? 'selected' : ''}>${this.currentStory.characters[ck].name}</option>`).join('')}
                     </select>
                   </div>
+                  <div class="choice-option-group choice-learn-group" title="Teach a fact to a character in Knowledge Matrix">
+                    <label class="choice-learn-label">Teaches Fact:</label>
+                    <select class="choice-learn-char" style="width: 105px;" title="Character who learns this fact">
+                      <option value="" ${!learnChar ? 'selected' : ''}>[Chat Contact]</option>
+                      ${charKeys.map(ck => `<option value="${ck}" ${learnChar === ck ? 'selected' : ''}>${this.currentStory.characters[ck].name}</option>`).join('')}
+                    </select>
+                    <select class="choice-learn-fact" style="width: 110px;" title="Fact to learn">
+                      <option value="" ${!learnFact ? 'selected' : ''}>[None]</option>
+                      ${facts.map(f => `<option value="${f}" ${learnFact === f ? 'selected' : ''}>${f}</option>`).join('')}
+                    </select>
+                  </div>
                   <div class="choice-option-group">
                     <label>Effect:</label>
-                    <select class="choice-act-key" title="Effect variable" style="width: 110px;">
+                    <select class="choice-act-key" title="Effect variable" style="width: 95px;">
                       <option value="" ${!actKey ? 'selected' : ''}>[No Effect]</option>
                       ${varKeys.map(vk => `<option value="${vk}" ${actKey === vk ? 'selected' : ''}>${vk}</option>`).join('')}
                     </select>
-                    <input type="number" class="choice-act-val" placeholder="+val" value="${actVal !== undefined ? actVal : ''}" style="width: 60px;" title="Effect amount">
+                    <input type="number" class="choice-act-val" placeholder="+val" value="${actVal !== undefined ? actVal : ''}" style="width: 55px;" title="Effect amount">
                   </div>
                   <div class="choice-actions-group">
                     <button type="button" class="btn btn-secondary btn-xs btn-add-choice-child" title="Add child node to this choice">+ Child Node</button>
@@ -508,6 +620,8 @@ export class StoryEditor {
 
             const chTextInput = choiceDiv.querySelector(".choice-text-input");
             const chChatSelect = choiceDiv.querySelector(".choice-chat-select");
+            const chLearnChar = choiceDiv.querySelector(".choice-learn-char");
+            const chLearnFact = choiceDiv.querySelector(".choice-learn-fact");
             const chActKey = choiceDiv.querySelector(".choice-act-key");
             const chActVal = choiceDiv.querySelector(".choice-act-val");
 
@@ -518,6 +632,15 @@ export class StoryEditor {
               } else {
                 delete choice.chat;
               }
+
+              const lChar = chLearnChar.value;
+              const lFact = chLearnFact.value;
+              if (lFact) {
+                choice.learn = lChar ? { character: lChar, fact: lFact } : { fact: lFact };
+              } else {
+                delete choice.learn;
+              }
+
               const k = chActKey.value;
               const v = parseInt(chActVal.value);
               if (k && !isNaN(v)) {
@@ -529,7 +652,7 @@ export class StoryEditor {
               this.triggerLocalStorageSave();
             };
 
-            [chTextInput, chChatSelect, chActKey, chActVal].forEach(el => {
+            [chTextInput, chChatSelect, chLearnChar, chLearnFact, chActKey, chActVal].forEach(el => {
               el.addEventListener("input", saveChoice);
               el.addEventListener("change", saveChoice);
             });
@@ -1002,6 +1125,8 @@ export class StoryEditor {
     });
 
     this.currentStory.characters = updatedCharacters;
+    this.syncKnowledgeMatrixDimensions();
+    this.renderKnowledgeMatrix();
 
     // Cascade ID changes to all nodes in the story
     if (Object.keys(idMap).length > 0) {
@@ -1128,6 +1253,239 @@ export class StoryEditor {
         this.triggerLocalStorageSave();
       });
     }
+  }
+
+  // Synchronize 2D knowledge matrix dimensions with characters (rows) and facts (cols)
+  syncKnowledgeMatrixDimensions() {
+    if (!this.currentStory) return;
+    if (!Array.isArray(this.currentStory.facts)) {
+      this.currentStory.facts = [];
+    }
+    const charKeys = Object.keys(this.currentStory.characters || {});
+
+    if (!Array.isArray(this.currentStory.knowledgeMatrix)) {
+      this.currentStory.knowledgeMatrix = charKeys.map(() => this.currentStory.facts.map(() => false));
+    } else {
+      this.currentStory.knowledgeMatrix = charKeys.map((_, charIdx) => {
+        const oldRow = Array.isArray(this.currentStory.knowledgeMatrix[charIdx]) ? this.currentStory.knowledgeMatrix[charIdx] : [];
+        return this.currentStory.facts.map((_, factIdx) => Boolean(oldRow[factIdx]));
+      });
+    }
+  }
+
+  // Render 2D Knowledge Matrix interactive table
+  renderKnowledgeMatrix() {
+    const container = document.getElementById("knowledge-matrix-container");
+    if (!container) return;
+    container.innerHTML = "";
+
+    this.syncKnowledgeMatrixDimensions();
+
+    const facts = this.currentStory.facts || [];
+    const chars = this.currentStory.characters || {};
+    const charKeys = Object.keys(chars);
+
+    if (facts.length === 0) {
+      container.innerHTML = `
+        <div class="matrix-empty-facts">
+          No facts defined yet. Click <strong>"+ Add Fact"</strong> above to create facts for characters to know.
+        </div>
+      `;
+    } else {
+      const table = document.createElement("table");
+      table.className = "knowledge-matrix-table";
+
+      // Table Header
+      const thead = document.createElement("thead");
+      const headerRow = document.createElement("tr");
+
+      const charTh = document.createElement("th");
+      charTh.className = "matrix-char-th";
+      charTh.innerHTML = `<span>Character (${charKeys.length})</span>`;
+      headerRow.appendChild(charTh);
+
+      facts.forEach((factName, factIdx) => {
+        const factTh = document.createElement("th");
+        factTh.className = "matrix-fact-header";
+
+        const innerDiv = document.createElement("div");
+        innerDiv.className = "matrix-fact-header-inner";
+
+        const factInput = document.createElement("input");
+        factInput.type = "text";
+        factInput.className = "matrix-fact-name-input";
+        factInput.value = factName;
+        factInput.title = "Click to edit fact name";
+        factInput.addEventListener("change", (e) => {
+          this.renameFact(factIdx, e.target.value.trim());
+        });
+
+        const delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.className = "matrix-fact-del-btn";
+        delBtn.title = `Delete fact: ${factName}`;
+        delBtn.innerHTML = "✖";
+        delBtn.addEventListener("click", () => {
+          this.deleteFact(factIdx);
+        });
+
+        innerDiv.appendChild(factInput);
+        innerDiv.appendChild(delBtn);
+        factTh.appendChild(innerDiv);
+        headerRow.appendChild(factTh);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      // Table Body
+      const tbody = document.createElement("tbody");
+      charKeys.forEach((charKey, charIdx) => {
+        const charObj = chars[charKey];
+        const row = document.createElement("tr");
+
+        const charTd = document.createElement("td");
+        charTd.className = "matrix-char-cell";
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "matrix-char-wrapper";
+
+        const avatar = document.createElement("div");
+        avatar.className = "matrix-char-avatar";
+        avatar.style.backgroundColor = charObj.avatarColor || "#6b7280";
+        avatar.textContent = charObj.avatarText || charKey.substring(0, 2).toUpperCase();
+
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "matrix-char-name";
+        nameSpan.textContent = charObj.name || charKey;
+
+        wrapper.appendChild(avatar);
+        wrapper.appendChild(nameSpan);
+        if (charObj.isPlayer) {
+          const playerTag = document.createElement("span");
+          playerTag.className = "matrix-char-player-tag";
+          playerTag.textContent = "ME";
+          wrapper.appendChild(playerTag);
+        }
+        charTd.appendChild(wrapper);
+        row.appendChild(charTd);
+
+        // Checkboxes for each fact
+        facts.forEach((_, factIdx) => {
+          const cellTd = document.createElement("td");
+          cellTd.className = "matrix-cell";
+
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.className = "matrix-checkbox";
+          checkbox.title = `${charObj.name} knows "${facts[factIdx]}"`;
+          checkbox.checked = Boolean(this.currentStory.knowledgeMatrix[charIdx] && this.currentStory.knowledgeMatrix[charIdx][factIdx]);
+
+          checkbox.addEventListener("change", () => {
+            if (!this.currentStory.knowledgeMatrix[charIdx]) {
+              this.currentStory.knowledgeMatrix[charIdx] = [];
+            }
+            this.currentStory.knowledgeMatrix[charIdx][factIdx] = checkbox.checked;
+            this.engine.loadStory(this.currentStory);
+            this.triggerLocalStorageSave();
+          });
+
+          cellTd.appendChild(checkbox);
+          row.appendChild(cellTd);
+        });
+
+        tbody.appendChild(row);
+      });
+      table.appendChild(tbody);
+      container.appendChild(table);
+    }
+
+    // Bind Add Fact Button
+    const btnAddFact = document.getElementById("btn-add-fact");
+    if (btnAddFact) {
+      const newBtn = btnAddFact.cloneNode(true);
+      btnAddFact.parentNode.replaceChild(newBtn, btnAddFact);
+      newBtn.addEventListener("click", () => this.addFact());
+    }
+  }
+
+  // Add a new fact to the knowledge matrix
+  addFact(customName) {
+    if (!this.currentStory.facts) {
+      this.currentStory.facts = [];
+    }
+    const count = this.currentStory.facts.length + 1;
+    const newName = customName || `fact_${count}`;
+    this.currentStory.facts.push(newName);
+
+    const charKeys = Object.keys(this.currentStory.characters || {});
+    if (!Array.isArray(this.currentStory.knowledgeMatrix)) {
+      this.currentStory.knowledgeMatrix = [];
+    }
+    charKeys.forEach((_, charIdx) => {
+      if (!this.currentStory.knowledgeMatrix[charIdx]) {
+        this.currentStory.knowledgeMatrix[charIdx] = [];
+      }
+      this.currentStory.knowledgeMatrix[charIdx].push(false);
+    });
+
+    this.renderKnowledgeMatrix();
+    this.renderNodeList();
+    this.engine.loadStory(this.currentStory);
+    this.triggerLocalStorageSave();
+  }
+
+  // Delete a fact and its column in the knowledge matrix
+  deleteFact(factIdx) {
+    if (!this.currentStory.facts || factIdx < 0 || factIdx >= this.currentStory.facts.length) return;
+    const factName = this.currentStory.facts[factIdx];
+    if (confirm(`Delete fact "${factName}" from the Knowledge Matrix?`)) {
+      this.currentStory.facts.splice(factIdx, 1);
+      if (Array.isArray(this.currentStory.knowledgeMatrix)) {
+        this.currentStory.knowledgeMatrix.forEach(row => {
+          if (Array.isArray(row)) {
+            row.splice(factIdx, 1);
+          }
+        });
+      }
+      this.renderKnowledgeMatrix();
+      this.renderNodeList();
+      this.engine.loadStory(this.currentStory);
+      this.triggerLocalStorageSave();
+    }
+  }
+
+  // Rename a fact and cascade changes to referencing nodes/choices
+  renameFact(factIdx, newName) {
+    if (!newName || !this.currentStory.facts || factIdx < 0 || factIdx >= this.currentStory.facts.length) return;
+    const oldName = this.currentStory.facts[factIdx];
+    if (oldName === newName) return;
+
+    this.currentStory.facts[factIdx] = newName;
+
+    // Cascade rename to choices and conditional nodes
+    const updateFactRefs = (list) => {
+      if (!list) return;
+      list.forEach(node => {
+        if (node.fact === oldName) node.fact = newName;
+        if (node.choices) {
+          node.choices.forEach(ch => {
+            if (ch.learn) {
+              if (typeof ch.learn === "string" && ch.learn === oldName) ch.learn = newName;
+              else if (ch.learn.fact === oldName) ch.learn.fact = newName;
+            }
+            if (ch.nodes) updateFactRefs(ch.nodes);
+          });
+        }
+        if (node.trueNodes) updateFactRefs(node.trueNodes);
+        if (node.falseNodes) updateFactRefs(node.falseNodes);
+      });
+    };
+    updateFactRefs(this.currentStory.nodes);
+
+    this.renderKnowledgeMatrix();
+    this.renderNodeList();
+    this.engine.loadStory(this.currentStory);
+    this.triggerLocalStorageSave();
   }
 
   exportJSON() {

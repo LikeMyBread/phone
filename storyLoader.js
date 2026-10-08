@@ -52,6 +52,21 @@ export function normalizeStory(story, fallbackId) {
       }
     };
   }
+  if (!Array.isArray(normalized.facts)) {
+    normalized.facts = [];
+  }
+
+  const charKeys = Object.keys(normalized.characters);
+  if (!Array.isArray(normalized.knowledgeMatrix)) {
+    normalized.knowledgeMatrix = charKeys.map(() => normalized.facts.map(() => false));
+  } else {
+    // Ensure dimensions match characters x facts
+    normalized.knowledgeMatrix = charKeys.map((_, charIdx) => {
+      const existingRow = Array.isArray(normalized.knowledgeMatrix[charIdx]) ? normalized.knowledgeMatrix[charIdx] : [];
+      return normalized.facts.map((_, factIdx) => Boolean(existingRow[factIdx]));
+    });
+  }
+
   return normalized;
 }
 

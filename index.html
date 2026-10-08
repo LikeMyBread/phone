@@ -75,6 +75,22 @@
 
         </div>
 
+        <!-- Knowledge Matrix (Canary Trap) Config Section -->
+        <div class="config-group knowledge-matrix-section">
+          <div class="knowledge-matrix-header">
+            <div class="matrix-title-group">
+              <h3>🧠 Knowledge Matrix</h3>
+              <span class="matrix-subtitle">Canary Trap system: 2D character-by-fact matrix of known information</span>
+            </div>
+            <div class="matrix-actions">
+              <button id="btn-add-fact" type="button" class="btn btn-secondary btn-sm">+ Add Fact</button>
+            </div>
+          </div>
+          <div id="knowledge-matrix-container" class="knowledge-matrix-scroller">
+            <!-- Dynamic 2D Knowledge Matrix Table rendered here -->
+          </div>
+        </div>
+
         <!-- Full-Width Story Nodes View Section -->
         <div class="config-group node-view-section">
           <div class="node-view-header">
@@ -127,6 +143,9 @@
               <span id="phone-contact-name" class="contact-name">Lt. Carver</span>
               <span id="phone-contact-status" class="contact-status">Online</span>
             </div>
+            <button id="btn-toggle-knowledge-hud" class="phone-hud-btn" type="button" title="View Live Knowledge Matrix">
+              <span class="hud-icon">🧠</span>
+            </button>
           </div>
 
           <!-- Chat List View Panel (Conversations selector) -->
@@ -163,6 +182,22 @@
           </div>
 
 
+
+          <!-- Phone Live Knowledge HUD Overlay -->
+          <div id="phone-knowledge-hud" class="phone-hud-overlay hidden">
+            <div class="phone-hud-card">
+              <div class="phone-hud-header">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span>🧠</span>
+                  <h4>Character Knowledge</h4>
+                </div>
+                <button type="button" id="btn-close-knowledge-hud" class="hud-close-btn">✖</button>
+              </div>
+              <div id="phone-knowledge-hud-body" class="phone-hud-body">
+                <!-- Live updated table of facts known by each character -->
+              </div>
+            </div>
+          </div>
 
           <!-- Bottom physical home gesture swipe line -->
           <div class="phone-home-indicator">

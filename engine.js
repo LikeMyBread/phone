@@ -26,12 +26,17 @@ export class GameEngine {
     this.clockObj = null;
     this.currentClock = null;
 
+    // Knowledge Matrix: 2D boolean array [characterIndex][factIndex]
+    this.facts = [];
+    this.knowledgeMatrix = [];
+
     this.callbacks = {
       onMessageAdded: () => {}, // (msg, targetChatId)
       onTypingStateChange: () => {},
       onChoicesDisplay: () => {},
       onStoryRestart: () => {},
       onVariableUpdate: () => {},
+      onKnowledgeUpdate: () => {}, // (matrix, summary)
       onClockUpdate: () => {}
     };
   }
@@ -135,8 +140,19 @@ export class GameEngine {
     // Initialize in-game clock
     this.initClock();
 
+    // Initialize Knowledge Matrix (2D boolean array: row = charIdx, col = factIdx)
+    this.facts = Array.isArray(this.story.facts) ? [...this.story.facts] : [];
+    const charKeys = Object.keys(this.story.characters || {});
+    if (Array.isArray(this.story.knowledgeMatrix)) {
+      this.knowledgeMatrix = charKeys.map((_, charIdx) => {
+        const row = Array.isArray(this.story.knowledgeMatrix[charIdx]) ? this.story.knowledgeMatrix[charIdx] : [];
+        return this.facts.map((_, factIdx) => Boolean(row[factIdx]));
+      });
+    } else {
+      this.knowledgeMatrix = charKeys.map(() => this.facts.map(() => false));
+    }
+
     // Choose default active chat (first visible contact)
-    const charKeys = Object.keys(this.story.characters);
     const visibleChars = charKeys.filter(k => k !== "player" && this.story.characters[k].visibleByDefault !== false);
     this.activeChatId = visibleChars[0] || charKeys.find(k => k !== "player") || charKeys[0] || "system";
 
@@ -148,9 +164,69 @@ export class GameEngine {
 
     this.callbacks.onStoryRestart();
     this.callbacks.onVariableUpdate(this.variables);
+    this.callbacks.onKnowledgeUpdate(this.knowledgeMatrix, this.getKnowledgeSummary());
 
     // Begin playback
     this.playCurrentNode();
+  }
+
+  getCharacterIndex(charId) {
+    if (!this.story || !this.story.characters) return -1;
+    return Object.keys(this.story.characters).indexOf(charId);
+  }
+
+  getFactIndex(factName) {
+    if (!this.facts) return -1;
+    return this.facts.indexOf(factName);
+  }
+
+  hasKnowledge(charId, factName) {
+    const charIdx = this.getCharacterIndex(charId);
+    const factIdx = this.getFactIndex(factName);
+    if (charIdx === -1 || factIdx === -1) return false;
+    return Boolean(this.knowledgeMatrix[charIdx] && this.knowledgeMatrix[charIdx][factIdx]);
+  }
+
+  setKnowledge(charId, factName, knows = true) {
+    const charIdx = this.getCharacterIndex(charId);
+    const factIdx = this.getFactIndex(factName);
+    if (charIdx === -1 || factIdx === -1) return false;
+    if (!this.knowledgeMatrix[charIdx]) {
+      this.knowledgeMatrix[charIdx] = [];
+    }
+    this.knowledgeMatrix[charIdx][factIdx] = Boolean(knows);
+    this.callbacks.onKnowledgeUpdate(this.knowledgeMatrix, this.getKnowledgeSummary());
+    return true;
+  }
+
+  learnFact(charId, factName) {
+    return this.setKnowledge(charId, factName, true);
+  }
+
+  applyLearn(learnData, defaultChatId) {
+    if (!learnData) return;
+    const items = Array.isArray(learnData) ? learnData : [learnData];
+    items.forEach(item => {
+      if (typeof item === "string") {
+        const targetChar = defaultChatId || this.activeChatId;
+        if (targetChar) this.learnFact(targetChar, item);
+      } else if (item && typeof item === "object") {
+        const targetChar = item.character || defaultChatId || this.activeChatId;
+        const factName = item.fact;
+        if (targetChar && factName) {
+          this.learnFact(targetChar, factName);
+        }
+      }
+    });
+  }
+
+  getKnowledgeSummary() {
+    const characters = this.story && this.story.characters ? Object.keys(this.story.characters) : [];
+    return {
+      characters,
+      facts: this.facts || [],
+      matrix: this.knowledgeMatrix || []
+    };
   }
 
   setActiveChat(chatId, isRoomOpen = true) {
@@ -213,20 +289,30 @@ export class GameEngine {
     this.playNormalNode(node);
   }
 
-  // Evaluates variables condition check and pushes result branch to context stack
+  // Evaluates variables or character knowledge condition check and pushes result branch to context stack
   evaluateConditionalNode(node) {
-    const varName = node.variable;
-    const currentVal = this.variables[varName] !== undefined ? this.variables[varName] : 0;
-    const checkVal = Number(node.value);
-
     let isTrue = false;
-    switch (node.operator) {
-      case "==": isTrue = currentVal == checkVal; break;
-      case "!=": isTrue = currentVal != checkVal; break;
-      case ">": isTrue = currentVal > checkVal; break;
-      case ">=": isTrue = currentVal >= checkVal; break;
-      case "<": isTrue = currentVal < checkVal; break;
-      case "<=": isTrue = currentVal <= checkVal; break;
+
+    if (node.conditionType === "knowledge" || (node.fact && node.character)) {
+      const charId = node.character || this.activeChatId;
+      const factName = node.fact;
+      const hasFact = this.hasKnowledge(charId, factName);
+      const expected = node.knows !== undefined ? Boolean(node.knows) : (node.value == 1 || node.value === true || node.value === "true");
+      isTrue = (hasFact === expected);
+    } else {
+      const varName = node.variable;
+      const currentVal = this.variables[varName] !== undefined ? this.variables[varName] : 0;
+      const checkVal = Number(node.value);
+
+      switch (node.operator) {
+        case "==": isTrue = currentVal == checkVal; break;
+        case "!=": isTrue = currentVal != checkVal; break;
+        case ">": isTrue = currentVal > checkVal; break;
+        case ">=": isTrue = currentVal >= checkVal; break;
+        case "<": isTrue = currentVal < checkVal; break;
+        case "<=": isTrue = currentVal <= checkVal; break;
+        default: isTrue = currentVal == checkVal; break;
+      }
     }
 
     const nextBranch = isTrue ? (node.trueNodes || []) : (node.falseNodes || []);
@@ -320,6 +406,10 @@ export class GameEngine {
   }
 
   finishNodePlayback(node, messageObj) {
+    if (node.learn) {
+      this.applyLearn(node.learn, node.sender === "system" ? this.activeChatId : node.sender);
+    }
+
     // Apply immediate variable updates
     if (node.actions) {
       this.applyActions(node.actions);
@@ -343,7 +433,6 @@ export class GameEngine {
       const context = this.stack[this.stack.length - 1];
       if (context) {
         context.currentIndex += 1;
-
         const autoDelay = node.autoAdvanceDelay !== undefined ? node.autoAdvanceDelay : 1000;
         this.delayTimeout = setTimeout(() => {
           this.playCurrentNode();
@@ -360,6 +449,10 @@ export class GameEngine {
       }
       if (key === "advanceMinutes" || key === "minutesTaken") {
         this.advanceClock(actions[key]);
+        continue;
+      }
+      if (key === "learn") {
+        this.applyLearn(actions[key], this.activeChatId);
         continue;
       }
       const val = Number(actions[key]);
@@ -408,6 +501,11 @@ export class GameEngine {
     // Clear active options
     this.activeChoices = [];
     this.callbacks.onChoicesDisplay([]);
+
+    // Process Knowledge Matrix learning
+    if (choice.learn) {
+      this.applyLearn(choice.learn, targetChatId);
+    }
 
     if (choice.actions) {
       this.applyActions(choice.actions);
